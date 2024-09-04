@@ -54,7 +54,7 @@ The rest of the antimatter collection works the same as for the matter collectio
 
 An antimatter level can be burned to level up the antimatter level.
 
-Antimatter elements can't be burned individually to decrease chances to mint elements from this level.
+Antimatter elements can't be burned individually to decrease chances to mint elements from this level (the chances to mint a specific antimatter element depends on the RAM of the matter elements).
 
 If a user manages to collect the entire periodic table of antimatter, they can withdraw the prize pool. Their matter and antimatter tokens are all burned. Their matter level goes back to lvl 1, antimatter level stays the same, and burned tokens count remains the same (allowing for a faster progression for a new run).
 
