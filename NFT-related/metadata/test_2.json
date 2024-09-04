@@ -1,0 +1,10 @@
+{
+  "name": "Helium",
+  "description": "Helium is a chemical element with symbol He and atomic number 2. It is a colorless, odorless, tasteless, non-toxic, inert, monatomic gas that heads the noble gas group in the periodic table. Its boiling and melting points are the lowest among all the elements.",
+  "image": "https://gray-acute-wildfowl-4.mypinata.cloud/ipfs/QmXBS6G6ZytV5mMxfpXGdr2CKfGzG38t1JZcypBkAfFpAs/test_2.png",
+  "external_url": "todo",
+  "attributes": [
+    { "trait_type": "RAM", "value": 4002602200000000000 },
+    { "trait_type": "Level", "value": 1 }
+  ]
+}
