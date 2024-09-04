@@ -8,6 +8,14 @@ import "@openzeppelin/contracts-upgradeable/token/ERC1155/extensions/ERC1155Burn
 import "@openzeppelin/contracts-upgradeable/token/ERC1155/extensions/ERC1155SupplyUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+// import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
+// import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol";
+// import "@openzeppelin/contracts/access/Ownable.sol";
+// import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
+
+//Chainlink VRF imports
+import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
+import "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
 
 /// @custom:security-contact "strapontin" on discord. Join Cyfrin server to contact more easily.
 contract PeriodicElementsCollection is
@@ -16,15 +24,32 @@ contract PeriodicElementsCollection is
     OwnableUpgradeable,
     ERC1155BurnableUpgradeable,
     ERC1155SupplyUpgradeable,
-    UUPSUpgradeable
+    UUPSUpgradeable,
+    VRFConsumerBaseV2
 {
     string public constant name = "Periodic Elements Collection";
+
+    mapping(uint256 => address) public _requestIdToMinter;
+
+    //Chainlink Variables
+    VRFCoordinatorV2Interface private immutable CoordinatorInterface;
+    uint64 private immutable _subscriptionId;
+    address private immutable _vrfCoordinatorV2Address;
+    // TODO : put this value in constructor, define it in deployer.s.sol
+    bytes32 keyHash = 0x474e34a077df58807dbe9c96d3c009b23b3c6d0cce433e59bbf5b34f823bc56c; // 750 gwei Sepolia
+    uint32 callbackGasLimit = 200000;
+    uint16 blockConfirmations = 10;
+    uint32 numWords = 1;
 
     event TokenMinted(address indexed account, uint256 indexed id);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {
+    constructor(uint64 subscriptionId, address vrfCoordinatorV2Address) VRFConsumerBaseV2(vrfCoordinatorV2Address) {
         _disableInitializers();
+
+        _subscriptionId = subscriptionId;
+        _vrfCoordinatorV2Address = vrfCoordinatorV2Address;
+        CoordinatorInterface = VRFCoordinatorV2Interface(vrfCoordinatorV2Address);
     }
 
     function initialize(address initialOwner) public initializer {
@@ -41,8 +66,19 @@ contract PeriodicElementsCollection is
         _setURI(newuri);
     }
 
-    function mint(address account, uint256 id, uint256 amount, bytes memory data) public onlyOwner {
-        _mint(account, id, amount, data);
+    function mint() public returns(uint requestId) {
+        // _mint(account, id, amount, data);        
+        requestId = CoordinatorInterface.requestRandomWords(
+            keyHash,
+            _subscriptionId,
+            blockConfirmations,
+            callbackGasLimit,
+            numWords
+        );
+
+        _requestIdToMinter[requestId] = msg.sender;
+
+        // emit RequestInitalized(requestId, msg.sender);
     }
 
     function mintBatch(address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data)
@@ -52,14 +88,39 @@ contract PeriodicElementsCollection is
         _mintBatch(to, ids, amounts, data);
     }
 
+    function fulfillRandomWords(uint256 requestId, uint256[] memory randomWords) internal override {
+        // get the minter address
+        address minter = _requestIdToMinter[requestId];
+
+        // To generate a random number between 1 and 100 inclusive
+        uint256 randomNumber = (randomWords[0] % 100) + 1;
+
+        uint256 tokenId;
+
+        //manipulate the random number to get the tokenId with a variable probability
+        if (randomNumber == 100) {
+            tokenId = 1;
+        } else if (randomNumber % 3 == 0) {
+            tokenId = 2;
+        } else {
+            tokenId = 3;
+        }
+
+        // Finally mint the token
+        _mint(minter, tokenId, 1, "");
+
+        // emit an event
+        emit TokenMinted(minter, tokenId);
+    }
+
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     // The following functions are overrides required by Solidity.
-
     function _update(address from, address to, uint256[] memory ids, uint256[] memory values)
         internal
         override(ERC1155Upgradeable, ERC1155SupplyUpgradeable)
     {
+        // put the code to run **before** the transfer HERE
         super._update(from, to, ids, values);
     }
 }
