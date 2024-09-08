@@ -19,7 +19,7 @@ The first pack minted each day is free.
 
 If users did not mint for up to 7 days, they cumulate these free mints, allowing to mint a maximum of 7 free packs at once.
 
-After free mints are expired, users can pay for packs. 1 pack costs `0.002 ether`. A **5% fee** goes to the owner. The rest goes into the prize pool.
+After free mints are expired, users can pay for packs. 1 pack costs `0.002 ether`. A **5% fee** goes straight to the owner (if not address(0)). The rest goes into the prize pool.
 
 Elements minted are random using chainlink. Elements minted cannot be higher than the current level of the user (e.g. at first, lvl 1 users can only mint Hydrogen and Helium).
 
@@ -44,7 +44,7 @@ Users can burn their elements to decrease the chances they have to mint them. Th
 Elements can't be burned if they belong to the max level unlocked by the user.
 
 ### Buying DarkMatterTokens ($DMT)
-$DMTs are the main currency of the game. 1 ETH = 1 DMT. 5% of ETH used to buy DMT goes to the owner, while the rest goes to the prize pool.
+$DMTs are the main currency of the game. 1 ETH = 1 DMT. 5% of ETH used to buy DMT goes straight to the owner (if not address(0)), while the rest goes to the prize pool.
 
 $DMTs are used as fee for transferring elements.
 
@@ -60,6 +60,9 @@ An antimatter row can be burned to get an antimatter element of the next level.
 Antimatter elements can't be burned individually to decrease chances to mint elements from this level (the chances to mint a specific antimatter element depends on the RAM of the matter elements).
 
 If a user manages to collect the entire periodic table of antimatter, they can withdraw the prize pool. Their matter and antimatter tokens are all burned. Their matter level goes back to lvl 1, antimatter level stays the same, and burned tokens count remains the same (allowing for a faster progression for a new run).
+
+### LINK tokens
+In order for the application to work as intended, the subscription contract needs to own enough LINK to start a VRF request. In order to incentivize users to fund LINKs to the contract, they would earn cards/packs for doing so. The amount of the reward should depend on the amount of LINK transfered.
 
 
 # Foundry Doc

@@ -17,7 +17,7 @@ install :;
 	forge install openzeppelin/openzeppelin-contracts@v5.0.2 --no-commit && \
 	forge install openzeppelin/openzeppelin-contracts-upgradeable@v5.0.2 --no-commit && \
 	forge install smartcontractkit/chainlink-brownie-contracts --no-commit && \
-	forge install OpenZeppelin/openzeppelin-foundry-upgrades@0.3.3 --no-commit
+	forge install OpenZeppelin/openzeppelin-foundry-upgrades@v0.3.3 --no-commit
 
 # Update Dependencies
 update:; forge update
