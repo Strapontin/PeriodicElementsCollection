@@ -12,6 +12,8 @@ contract PeriodicElementsCollectionDeployer is Script {
         public
         returns (PeriodicElementsCollection periodicElementsCollection, VRFCoordinatorV2Mock mockVRF)
     {
+        vm.startBroadcast();
+
         // Can ignore this. Just sets some base values
         // In real-world scenarios, you won't be deciding the
         // constructor values of the coordinator contract anyways
@@ -20,10 +22,11 @@ contract PeriodicElementsCollectionDeployer is Script {
         // Creating a new subscription through account 0x1
         uint64 subId = mockVRF.createSubscription();
 
-        ElementsData.ElementDataStruct[] memory datas = getElementsData();
-        periodicElementsCollection = new PeriodicElementsCollection(subId, address(mockVRF), datas);
+        periodicElementsCollection = new PeriodicElementsCollection(subId, address(mockVRF), getElementsData());
 
         mockVRF.addConsumer(subId, address(periodicElementsCollection));
+
+        vm.stopBroadcast();
     }
 
     // This function sets the default values for each elements
@@ -148,7 +151,7 @@ contract PeriodicElementsCollectionDeployer is Script {
         data[115] = ElementsData.ElementDataStruct(116, "Livermorium", "Lv", 293000000000000000000, 7);
         data[116] = ElementsData.ElementDataStruct(117, "Tennessine", "Ts", 294000000000000000000, 7);
         data[117] = ElementsData.ElementDataStruct(118, "Oganesson", "Og", 294000000000000000000, 7);
-        
+
         return data;
     }
 }

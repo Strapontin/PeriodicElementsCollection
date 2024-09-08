@@ -11,10 +11,17 @@ contract ElementsData {
     }
 
     mapping(uint8 elementNumber => ElementDataStruct data) public elementsData; // List of elements' datas
+    mapping(uint8 level => uint8[] elementsNumberUnlocked) elementsUnlockedUnderUserLevel;
+
+    mapping(address user => mapping(uint8 elementNumber => uint256 burnedTimes)) burnedTimes;
 
     constructor(ElementDataStruct[] memory datas) {
         for (uint256 i = 0; i < datas.length; i++) {
             elementsData[datas[i].number] = datas[i];
+
+            for (uint8 lvl = 1; lvl <= datas[i].level; lvl++) {
+                elementsUnlockedUnderUserLevel[lvl].push(datas[i].number);
+            }
         }
     }
 }

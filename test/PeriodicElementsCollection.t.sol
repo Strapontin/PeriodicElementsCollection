@@ -18,11 +18,13 @@ contract PeriodicElementsCollectionTest is Test {
     address owner = makeAddr("owner");
 
     function setUp() public {
+    }
+
+// Test this
+    function testIsAlive() public  {
         darkMatterTokens = new DarkMatterTokens(owner);
 
-        vm.startPrank(owner);
         (periodicElementsCollection, mockVRF) = (new PeriodicElementsCollectionDeployer()).run();
-        vm.stopPrank();
 
         assert(address(periodicElementsCollection) != address(0));
         assertEq(owner, periodicElementsCollection.owner());
@@ -30,9 +32,17 @@ contract PeriodicElementsCollectionTest is Test {
         // funding the subscription with 1000 LINK
         uint64 subId = periodicElementsCollection.subscriptionId();
         mockVRF.fundSubscription(subId, 1000000000000000000000);
-    }
 
-    function testIsAlive() public view {
+
+
+
+
+
+
+
+
+
+
         assertEq("Periodic Elements Collection", periodicElementsCollection.name());
         (uint8 number, string memory name, string memory symbol, uint256 ram, uint8 level) =
             periodicElementsCollection.elementsData(1);
@@ -42,17 +52,17 @@ contract PeriodicElementsCollectionTest is Test {
         assertEq("H", symbol);
         assertEq(1.008 * 1e18, ram);
         assertEq(1, level);
+
+        uint256 expectedRAM = 1e22 / ram;
+        assertEq(expectedRAM, periodicElementsCollection.getElementArtificialRelativeAtomicMass(1));
     }
 
     function testRandomness() public {
         for (uint256 i = 1; i <= 1000; i++) {
-            //Creating a random address using the
-            //variable {i}
-            //Useful to call the mint function from a 100
-            //different addresses
             address addr = address(bytes20(uint160(i)));
+
             vm.prank(addr);
-            uint256 requestID = periodicElementsCollection.mint();
+            uint256 requestID = periodicElementsCollection.mintPack();
 
             //Have to impersonate the VRFCoordinatorV2Mock contract
             //since only the VRFCoordinatorV2Mock contract
