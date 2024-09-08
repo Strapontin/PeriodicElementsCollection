@@ -20,25 +20,19 @@ contract PeriodicElementsCollectionTest is Test {
     function setUp() public {
         darkMatterTokens = new DarkMatterTokens(owner);
 
-    }
-
-    function testIsAlive() public {
         vm.startPrank(owner);
         (periodicElementsCollection, mockVRF) = (new PeriodicElementsCollectionDeployer()).run();
         vm.stopPrank();
-        
+
         assert(address(periodicElementsCollection) != address(0));
         assertEq(owner, periodicElementsCollection.owner());
-        uint64 subId = periodicElementsCollection.subscriptionId();
 
         // funding the subscription with 1000 LINK
+        uint64 subId = periodicElementsCollection.subscriptionId();
         mockVRF.fundSubscription(subId, 1000000000000000000000);
+    }
 
-        // Adding the consumer contract to the subscription
-        // Only owner of subscription can add consumers
-        vm.prank(owner);
-        mockVRF.addConsumer(subId, address(periodicElementsCollection));
-
+    function testIsAlive() public view {
         assertEq("Periodic Elements Collection", periodicElementsCollection.name());
         (uint8 number, string memory name, string memory symbol, uint256 ram, uint8 level) =
             periodicElementsCollection.elementsData(1);
@@ -50,7 +44,7 @@ contract PeriodicElementsCollectionTest is Test {
         assertEq(1, level);
     }
 
-    function notestRandomness() public {
+    function testRandomness() public {
         for (uint256 i = 1; i <= 1000; i++) {
             //Creating a random address using the
             //variable {i}
