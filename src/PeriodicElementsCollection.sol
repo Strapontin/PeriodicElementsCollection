@@ -2,6 +2,8 @@
 // Compatible with OpenZeppelin Contracts ^5.0.0
 pragma solidity ^0.8.20;
 
+import {ElementsData} from "./ElementsData.sol";
+
 import "@openzeppelin/contracts-upgradeable/token/ERC1155/ERC1155Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC1155/extensions/ERC1155BurnableUpgradeable.sol";
@@ -25,31 +27,36 @@ contract PeriodicElementsCollection is
     ERC1155BurnableUpgradeable,
     ERC1155SupplyUpgradeable,
     UUPSUpgradeable,
-    VRFConsumerBaseV2
+    VRFConsumerBaseV2,
+    ElementsData
 {
     string public constant name = "Periodic Elements Collection";
 
     mapping(uint256 => address) public _requestIdToMinter;
 
     //Chainlink Variables
-    VRFCoordinatorV2Interface private immutable CoordinatorInterface;
-    uint64 private immutable _subscriptionId;
-    address private immutable _vrfCoordinatorV2Address;
+    VRFCoordinatorV2Interface private immutable coordinatorInterface;
+    uint64 public immutable subscriptionId;
+    address private immutable vrfCoordinatorV2Address;
     // TODO : put this value in constructor, define it in deployer.s.sol
     bytes32 keyHash = 0x474e34a077df58807dbe9c96d3c009b23b3c6d0cce433e59bbf5b34f823bc56c; // 750 gwei Sepolia
     uint32 callbackGasLimit = 200000;
     uint16 blockConfirmations = 10;
     uint32 numWords = 1;
 
+    event MintRequestInitalized(uint256 indexed requestId, address indexed account);
     event TokenMinted(address indexed account, uint256 indexed id);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor(uint64 subscriptionId, address vrfCoordinatorV2Address) VRFConsumerBaseV2(vrfCoordinatorV2Address) {
-        _disableInitializers();
+    constructor(uint64 _subscriptionId, address _vrfCoordinatorV2Address, ElementDataStruct[] memory datas)
+        VRFConsumerBaseV2(vrfCoordinatorV2Address)
+        ElementsData(datas)
+    {
+        // _disableInitializers();
 
-        _subscriptionId = subscriptionId;
-        _vrfCoordinatorV2Address = vrfCoordinatorV2Address;
-        CoordinatorInterface = VRFCoordinatorV2Interface(vrfCoordinatorV2Address);
+        subscriptionId = _subscriptionId;
+        vrfCoordinatorV2Address = _vrfCoordinatorV2Address;
+        coordinatorInterface = VRFCoordinatorV2Interface(_vrfCoordinatorV2Address);
     }
 
     function initialize(address initialOwner) public initializer {
@@ -66,31 +73,27 @@ contract PeriodicElementsCollection is
         _setURI(newuri);
     }
 
-    function mint() public returns(uint requestId) {
-        // _mint(account, id, amount, data);        
-        requestId = CoordinatorInterface.requestRandomWords(
-            keyHash,
-            _subscriptionId,
-            blockConfirmations,
-            callbackGasLimit,
-            numWords
+    function mint() public returns (uint256 requestId) {
+        // _mint(account, id, amount, data);
+        requestId = coordinatorInterface.requestRandomWords(
+            keyHash, subscriptionId, blockConfirmations, callbackGasLimit, numWords
         );
 
         _requestIdToMinter[requestId] = msg.sender;
 
-        // emit RequestInitalized(requestId, msg.sender);
+        emit MintRequestInitalized(requestId, msg.sender);
     }
 
-    function mintBatch(address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data)
-        public
-        onlyOwner
-    {
-        _mintBatch(to, ids, amounts, data);
-    }
+    // function mintBatch(address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data)
+    //     public
+    //     onlyOwner
+    // {
+    //     // TODO : Accounts can mint several packs at once, depending on the ether they provided
+    //     _mintBatch(to, ids, amounts, data);
+    // }
 
     function fulfillRandomWords(uint256 requestId, uint256[] memory randomWords) internal override {
-        // get the minter address
-        address minter = _requestIdToMinter[requestId];
+        address accountMinting = _requestIdToMinter[requestId];
 
         // To generate a random number between 1 and 100 inclusive
         uint256 randomNumber = (randomWords[0] % 100) + 1;
@@ -107,10 +110,10 @@ contract PeriodicElementsCollection is
         }
 
         // Finally mint the token
-        _mint(minter, tokenId, 1, "");
+        _mint(accountMinting, tokenId, 1, "");
 
         // emit an event
-        emit TokenMinted(minter, tokenId);
+        emit TokenMinted(accountMinting, tokenId);
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
@@ -123,4 +126,6 @@ contract PeriodicElementsCollection is
         // put the code to run **before** the transfer HERE
         super._update(from, to, ids, values);
     }
+
+    uint256[50] private __gap;
 }

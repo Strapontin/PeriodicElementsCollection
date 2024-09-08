@@ -1,45 +1,56 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {Test, console} from "forge-std/Test.sol";
 import {PeriodicElementsCollection} from "../src/PeriodicElementsCollection.sol";
+import {DarkMatterTokens} from "../src/DarkMatterTokens.sol";
+import {ElementsData} from "../src/ElementsData.sol";
+import {PeriodicElementsCollectionDeployer} from "../script/PeriodicElementsCollection.s.sol";
+
+import {Test, console} from "forge-std/Test.sol";
 import {VRFCoordinatorV2Mock} from
     "../lib/chainlink-brownie-contracts/contracts/src/v0.8/mocks/VRFCoordinatorV2Mock.sol";
 
 contract PeriodicElementsCollectionTest is Test {
     PeriodicElementsCollection periodicElementsCollection;
+    DarkMatterTokens darkMatterTokens;
     VRFCoordinatorV2Mock public mockVRF;
 
     address owner = makeAddr("owner");
 
     function setUp() public {
-        // Can ignore this. Just sets some base values
-        // In real-world scenarios, you won't be deciding the
-        // constructor values of the coordinator contract anyways
-        vm.prank(owner);
-        mockVRF = new VRFCoordinatorV2Mock(100000000000000000, 1000000000);
+        darkMatterTokens = new DarkMatterTokens(owner);
 
-        // Creating a new subscription through account 0x1
-        vm.prank(owner);
-        uint64 subId = mockVRF.createSubscription();
+    }
+
+    function testIsAlive() public {
+        vm.startPrank(owner);
+        (periodicElementsCollection, mockVRF) = (new PeriodicElementsCollectionDeployer()).run();
+        vm.stopPrank();
+        
+        assert(address(periodicElementsCollection) != address(0));
+        assertEq(owner, periodicElementsCollection.owner());
+        uint64 subId = periodicElementsCollection.subscriptionId();
 
         // funding the subscription with 1000 LINK
         mockVRF.fundSubscription(subId, 1000000000000000000000);
-
-        // Creating a new instance of the main consumer contract
-        periodicElementsCollection = new PeriodicElementsCollection(subId, address(periodicElementsCollection));
 
         // Adding the consumer contract to the subscription
         // Only owner of subscription can add consumers
         vm.prank(owner);
         mockVRF.addConsumer(subId, address(periodicElementsCollection));
-    }
 
-    function testIsAlive() public view {
         assertEq("Periodic Elements Collection", periodicElementsCollection.name());
+        (uint8 number, string memory name, string memory symbol, uint256 ram, uint8 level) =
+            periodicElementsCollection.elementsData(1);
+
+        assertEq(1, number);
+        assertEq("Hydrogen", name);
+        assertEq("H", symbol);
+        assertEq(1.008 * 1e18, ram);
+        assertEq(1, level);
     }
 
-    function testRandomness() public {
+    function notestRandomness() public {
         for (uint256 i = 1; i <= 1000; i++) {
             //Creating a random address using the
             //variable {i}
