@@ -22,7 +22,6 @@ contract PeriodicElementsCollectionDeployer is Script {
 
         ElementsData.ElementDataStruct[] memory datas = getElementsData();
         periodicElementsCollection = new PeriodicElementsCollection(subId, address(mockVRF), datas);
-        periodicElementsCollection.initialize(msg.sender);
 
         mockVRF.addConsumer(subId, address(periodicElementsCollection));
     }
