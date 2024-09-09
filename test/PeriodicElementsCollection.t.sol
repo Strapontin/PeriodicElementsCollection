@@ -33,7 +33,7 @@ contract PeriodicElementsCollectionTest is Test {
     // Test this
     function testIsAlive() public view {
         assertEq("Periodic Elements Collection", periodicElementsCollection.name());
-        (uint8 number, string memory name, string memory symbol, uint256 ram, uint8 level) =
+        (uint256 number, string memory name, string memory symbol, uint256 ram, uint256 level) =
             periodicElementsCollection.elementsData(1);
 
         assertEq(1, number);
@@ -43,7 +43,20 @@ contract PeriodicElementsCollectionTest is Test {
         assertEq(1, level);
 
         uint256 expectedRAM = 1e22 / ram;
-        assertEq(expectedRAM, periodicElementsCollection.getElementArtificialRelativeAtomicMass(1));
+        assertEq(expectedRAM, periodicElementsCollection.getElementArtificialRAMWeight(1));
+    }
+
+    function testElementsLevelIsCorrect() public view {
+        for (uint256 lvl = 1; lvl <= 7; lvl++) {
+            uint256[] memory lvlElements = periodicElementsCollection.getElementsUnlockedUnderLevel(lvl);
+
+            assertEq(
+                lvlElements.length,
+                lvl == 1
+                    ? 2
+                    : lvl == 2 ? 10 : lvl == 3 ? 18 : lvl == 4 ? 36 : lvl == 5 ? 54 : lvl == 6 ? 86 : lvl == 7 ? 118 : 0
+            );
+        }
     }
 
     function testRandomness() public {

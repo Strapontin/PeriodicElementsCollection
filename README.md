@@ -6,10 +6,10 @@ The elements details in this project were taken from [this github page](https://
 This is a periodic elements collection game. Users can collect periodic elements.
 
 ### Cool stuff to implement :
-- Signatures : Users can sign a transaction to be executed by someone else to delegate gas costs. In exchange, 20% of cards minted (1 card per mint) are given to the query executor (search ressources about this behaviour online).
-- ERC1155 : The list of elements will probably be stored in an ERC1155 style contract.
-- UUPSUpgradeable : The contract will need to be upgradeable in order to fix issues when they are spotted.
-- Chainlink : used for randomness.
+- &check;ERC1155 : The list of elements will probably be stored in an ERC1155 style contract.
+- &check;Chainlink : used for randomness.
+- &cross;UUPSUpgradeable : The contract will need to be upgradeable in order to fix issues when they are spotted.
+- &cross;Signatures : Users can sign a transaction to be executed by someone else to delegate gas costs. In exchange, 20% of cards minted (1 card per mint) are given to the query executor (search ressources about this behaviour online).
 
 ## Features
 ### Minting
@@ -31,7 +31,7 @@ For every element minted, there is a 1/10_000 chances to mint an antimatter elem
 Allows minting of multiple packs, given the amount of eth transfered.
 
 ### Minting Level
-Users start at minting level 1 (Hydrogen & Helium level). When they have all elements of a level, they can burn them to earn a random element of the next level. If a user earns this way an element of the next level, they level up (can’t skip 3 levels if someone else transferred the elements).
+Users start at minting level 1 (Hydrogen & Helium level). When they have all elements of a level, they can burn them to earn a random element of the next level. If a user earns this way an element of a higher level, they level up +1 (can’t skip 3 levels if someone else transferred the elements).
 
 ### Selling/Buying/Transferring elements
 When a transfer occurs, a `0.0005 ether` fee is taken by the contract from the previous owner of an element, to incentivize players to end the game rather than become farming machines. Every time a user sends an element, their total fee increases by `0.0005 ether`.

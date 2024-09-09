@@ -3,25 +3,64 @@ pragma solidity ^0.8.20;
 
 contract ElementsData {
     struct ElementDataStruct {
-        uint8 number; // Number of the element in the periodic table
+        uint256 number; // Number of the element in the periodic table
         string name; // Full name of the element
         string symbol; // Short symbol of the element
         uint256 initialRAM; // Initial Relative Atomic Mass of the element
-        uint8 level; // Level of the element (from 1 to 7)
+        uint256 level; // Level of the element (from 1 to 7)
     }
 
-    mapping(uint8 elementNumber => ElementDataStruct data) public elementsData; // List of elements' datas
-    mapping(uint8 level => uint8[] elementsNumberUnlocked) elementsUnlockedUnderUserLevel;
-
-    mapping(address user => mapping(uint8 elementNumber => uint256 burnedTimes)) burnedTimes;
+    mapping(uint256 elementNumber => ElementDataStruct data) public elementsData; // List of elements' datas
+    mapping(uint256 level => uint256[] elementsNumberUnlocked) public elementsUnlockedUnderLevel;
+    mapping(address user => mapping(uint256 elementNumber => uint256 burnedTimes)) burnedTimes;
+    mapping(address user => uint256 level) public userLevel;
 
     constructor(ElementDataStruct[] memory datas) {
         for (uint256 i = 0; i < datas.length; i++) {
             elementsData[datas[i].number] = datas[i];
 
-            for (uint8 lvl = 1; lvl <= datas[i].level; lvl++) {
-                elementsUnlockedUnderUserLevel[lvl].push(datas[i].number);
+            // Fills lvl 1 elements in all levels, lvl 2 in all except lvl 1, ...
+            for (uint256 lvl = 7; lvl >= datas[i].level; lvl--) {
+                elementsUnlockedUnderLevel[lvl].push(datas[i].number);
             }
         }
+    }
+
+    function pickRandomElementAvailable(uint256 randomWord) internal view returns (uint256) {
+        uint256[] memory elementsUnlocked = elementsUnlockedUnderLevel[userLevel[msg.sender]];
+        uint256 availableElementsLength = elementsUnlocked.length;
+
+        uint256[] memory weights = new uint256[](availableElementsLength);
+        uint256 totalWeight = 0;
+
+        for (uint256 i = 0; i < availableElementsLength; i++) {
+            weights[i] = getElementArtificialRAMWeight(elementsUnlocked[i]);
+            totalWeight += weights[i];
+        }
+
+        if (randomWord < totalWeight) {
+            // TODO : This is for debugging purposes, to be removed before production
+            require(false, "!!!!!!!!! WARNING !!!!!!!! -- totalWeight seem to be too low !");
+        }
+        randomWord = randomWord % totalWeight;
+
+        uint256 cumulativeWeight = 0;
+        for (uint256 i = 0; i < elementsUnlocked.length; i++) {
+            cumulativeWeight += weights[i];
+            if (randomWord < cumulativeWeight) {
+                return elementsUnlocked[i];
+            }
+        }
+
+        // This should not be reached; return the last element as a fallback
+        return elementsUnlocked[elementsUnlocked.length - 1];
+    }
+
+    function getElementArtificialRAMWeight(uint256 elementNumber) public view returns (uint256 artificialRAM) {
+        uint256 elementBaseRAM = elementsData[elementNumber].initialRAM;
+        uint256 numBurnedTimes = burnedTimes[msg.sender][elementNumber];
+
+        // 1e22 allows the heaviest burnable element (Radon) to be burned (10_000 - 222) times
+        artificialRAM = 1e22 / (elementBaseRAM + (numBurnedTimes * 1e18));
     }
 }

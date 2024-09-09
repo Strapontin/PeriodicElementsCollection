@@ -37,7 +37,6 @@ contract PeriodicElementsCollection is ERC1155, ERC1155Burnable, ERC1155Supply, 
     uint256 mintPackPrice = 0.002 ether;
 
     event MintRequestInitalized(uint256 indexed requestId, address indexed account);
-    event TokenMinted(address indexed account, uint256 indexed id);
 
     constructor(uint256 _subscriptionId, address _vrfCoordinatorV2Address, ElementDataStruct[] memory datas)
         VRFConsumerBaseV2Plus(_vrfCoordinatorV2Address)
@@ -105,6 +104,9 @@ contract PeriodicElementsCollection is ERC1155, ERC1155Burnable, ERC1155Supply, 
     function fulfillRandomWords(uint256 requestId, uint256[] calldata randomWords) internal override {
         address accountMinting = _requestIdToMinter[requestId];
 
+        uint256[] memory ids = new uint256[](240);
+        uint256[] memory values = new uint256[](240);
+
         // The minted element is selected from :
         //  - the elements under playerLevel
         //  - relative to the available elements RAM
@@ -112,34 +114,37 @@ contract PeriodicElementsCollection is ERC1155, ERC1155Burnable, ERC1155Supply, 
         // For each randomWords, we mint one card
         for (uint256 wordsId = 0; wordsId < randomWords.length; wordsId++) {
             // If the number is a multiple of 10_000, the minted element is antimatter
-            uint256 isAntimatter = randomWords[wordsId] % 10_000;
+            uint256 tokenId = pickRandomElementAvailable(randomWords[wordsId]);
 
-            uint256 tokenId;
+            if (randomWords[wordsId] % 10_000 == 0) {
+                // This is an antimatter element
+                tokenId += 10_000;
+            }
 
-            // //manipulate the random number to get the tokenId with a variable probability
-            // if (randomNumber == 100) {
-            //     tokenId = 1;
-            // } else if (randomNumber % 3 == 0) {
-            //     tokenId = 2;
-            // } else {
-            //     tokenId = 3;
-            // }
-
-            // Finally mint the token
-            // _mint(account, id, amount, data);
-            _mint(accountMinting, tokenId, 1, "");
-
-            // emit an event
-            emit TokenMinted(accountMinting, tokenId);
+            // Updates the number of elementsToMint
+            uint256 firstZeroValueIndex = 999;
+            for (uint256 i = 0; i < ids.length; i++) {
+                if (ids[i] == tokenId) {
+                    values[i]++;
+                    break;
+                } else if (ids[i] == 0) {
+                    firstZeroValueIndex = i;
+                    break;
+                }
+            }
+            // Adds the element to mint if first of pack
+            if (firstZeroValueIndex != 999) {
+                ids[firstZeroValueIndex] = tokenId;
+                values[firstZeroValueIndex] = 1;
+            }
         }
+
+        // Finally mint the tokens
+        _mintBatch(accountMinting, ids, values, "");
     }
 
-    function getElementArtificialRelativeAtomicMass(uint8 elementNumber) public view returns (uint256 artificialRAM) {
-        uint256 elementBaseRAM = elementsData[elementNumber].initialRAM;
-        uint256 burnedTimes = burnedTimes[msg.sender][elementNumber];
-
-        // 1e22 allows the heaviest burnable element to be burned (10_000 - 222) times
-        artificialRAM = 1e22 / (elementBaseRAM + (burnedTimes * 1e18));
+    function getElementsUnlockedUnderLevel(uint256 level) public view returns (uint256[] memory) {
+        return elementsUnlockedUnderLevel[level];
     }
 
     function _update(address from, address to, uint256[] memory ids, uint256[] memory values)
