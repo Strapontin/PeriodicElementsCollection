@@ -9,6 +9,7 @@ import {PeriodicElementsCollectionDeployer} from "../script/PeriodicElementsColl
 
 import {Test, console} from "forge-std/Test.sol";
 import {VRFCoordinatorV2_5Mock} from "@chainlink/contracts/src/v0.8/vrf/mocks/VRFCoordinatorV2_5Mock.sol";
+import {FundSubscription} from "../script/VRFInteractions.s.sol";
 
 contract PeriodicElementsCollectionTest is Test {
     PeriodicElementsCollection periodicElementsCollection;
@@ -16,11 +17,12 @@ contract PeriodicElementsCollectionTest is Test {
 
     address owner;
     VRFCoordinatorV2_5Mock vrfCoordinator;
+    FundSubscription fundSubscription;
 
     function setUp() public {
-
         (periodicElementsCollection, helperConfig) = (new PeriodicElementsCollectionDeployer()).deployContract();
-        
+        fundSubscription = new FundSubscription();
+
         owner = helperConfig.getConfig().account;
         vrfCoordinator = VRFCoordinatorV2_5Mock(helperConfig.getConfig().vrfCoordinator);
 
@@ -45,10 +47,12 @@ contract PeriodicElementsCollectionTest is Test {
     }
 
     function testRandomness() public {
-        vm.warp(block.timestamp + 2 days);
-        
+        vm.warp(block.timestamp + 25 hours);
+
         for (uint256 i = 1; i <= 1000; i++) {
             address addr = address(bytes20(uint160(i)));
+
+            applyFundSubscription();
 
             vm.prank(addr);
             uint256 requestID = periodicElementsCollection.mintPack();
@@ -69,5 +73,14 @@ contract PeriodicElementsCollectionTest is Test {
         // console2.log("Supply with tokenID 1 is " , supplytracker[1]);
         // console2.log("Supply with tokenID 2 is " , supplytracker[2]);
         // console2.log("Supply with tokenID 3 is " , supplytracker[3]);
+    }
+
+    /**
+     * Private functions
+     */
+    function applyFundSubscription() private {
+        HelperConfig.NetworkConfig memory config = helperConfig.getConfig();
+        config.subscriptionId = periodicElementsCollection.subscriptionId();
+        fundSubscription.fundSubscription(config);
     }
 }

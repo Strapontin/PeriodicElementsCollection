@@ -27,7 +27,7 @@ contract PeriodicElementsCollectionDeployer is Script {
 
             // Fund it
             FundSubscription fundSubscription = new FundSubscription();
-            fundSubscription.fundSubscription(config.vrfCoordinator, config.subscriptionId, config.link, config.account);
+            fundSubscription.fundSubscription(config);
         }
 
         vm.startBroadcast(config.account);
@@ -40,7 +40,6 @@ contract PeriodicElementsCollectionDeployer is Script {
         addConsumer.addConsumer(
             address(periodicElementsCollection), config.vrfCoordinator, config.subscriptionId, config.account
         );
-        // mockVRF.addConsumer(config.subscriptionId, address(periodicElementsCollection));
 
         return (periodicElementsCollection, helperConfig);
     }

@@ -15,13 +15,7 @@ import {VRFConsumerBaseV2Plus} from "@chainlink/contracts/src/v0.8/vrf/dev/VRFCo
 import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
 
 /// @custom:security-contact "strapontin" on discord. Join Cyfrin server to contact more easily.
-contract PeriodicElementsCollection is
-    ERC1155,
-    ERC1155Burnable,
-    ERC1155Supply,
-    VRFConsumerBaseV2Plus,
-    ElementsData
-{
+contract PeriodicElementsCollection is ERC1155, ERC1155Burnable, ERC1155Supply, VRFConsumerBaseV2Plus, ElementsData {
     error PEC_NoFreePackAvailableAndNotEnoughEtherSendToMintPack();
     error PEC_EthNotSend();
 
@@ -66,8 +60,7 @@ contract PeriodicElementsCollection is
         startOfTheDay = startOfTheDay * 1 days;
 
         uint256 lastFreeMint = lastFreeMintFromUsers[msg.sender];
-        uint256 numOfFreePacksAvailable =
-            lastFreeMint < startOfTheDay ? (startOfTheDay / 1 days) - (lastFreeMint / 1 days) : 0;
+        uint256 numOfFreePacksAvailable = (startOfTheDay / 1 days) - (lastFreeMint / 1 days);
 
         // If no free packs available and not enough ether send, revert
         if (numOfFreePacksAvailable == 0 && msg.value < mintPackPrice) {
@@ -101,8 +94,10 @@ contract PeriodicElementsCollection is
         _requestIdToMinter[requestId] = msg.sender;
 
         uint256 leftOverEth = msg.value - (mintPackPrice * numOfPaidPacksToMint);
-        (bool sent,) = address(msg.sender).call{value: leftOverEth}("");
-        if (!sent) revert PEC_EthNotSend();
+        if (leftOverEth != 0) {
+            (bool sent,) = address(msg.sender).call{value: leftOverEth}("");
+            if (!sent) revert PEC_EthNotSend();
+        }
 
         emit MintRequestInitalized(requestId, msg.sender);
     }

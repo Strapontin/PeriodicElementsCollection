@@ -6,6 +6,7 @@ import {HelperConfig, CodeConstants} from "script/HelperConfig.s.sol";
 import {VRFCoordinatorV2_5Mock} from "@chainlink/contracts/src/v0.8/vrf/mocks/VRFCoordinatorV2_5Mock.sol";
 import {LinkToken} from "@chainlink/contracts/src/v0.8/shared/token/ERC677/LinkToken.sol";
 import {DevOpsTools} from "lib/foundry-devops/src/DevOpsTools.sol";
+import {HelperConfig} from "./HelperConfig.s.sol";
 
 contract CreateSubscription is Script {
     function run() public {
@@ -44,19 +45,15 @@ contract FundSubscription is Script, CodeConstants {
 
     function fundSubscriptionUsingConfig() public {
         HelperConfig helperConfig = new HelperConfig();
-        address vrfCoordinator = helperConfig.getConfig().vrfCoordinator;
-        uint256 subscriptionId = helperConfig.getConfig().subscriptionId;
-        address linkToken = helperConfig.getConfig().link;
-        address account = helperConfig.getConfig().account;
-        fundSubscription(vrfCoordinator, subscriptionId, linkToken, account);
+        fundSubscription(helperConfig.getConfig());
     }
 
-    function fundSubscription(
-        address vrfCoordinator,
-        uint256 subscriptionId,
-        address, /*linkToken*/
-        address /*account*/
-    ) public {
+    function fundSubscription(HelperConfig.NetworkConfig memory networkConfig) public {
+        address vrfCoordinator = networkConfig.vrfCoordinator;
+        uint256 subscriptionId = networkConfig.subscriptionId;
+        address linkToken = networkConfig.link;
+        address account = networkConfig.account;
+
         console.log("Funding Subscription: ", subscriptionId);
         console.log("Using vrfCoordinator: ", vrfCoordinator);
         console.log("On chainid: ", block.chainid);
@@ -67,10 +64,11 @@ contract FundSubscription is Script, CodeConstants {
             vm.stopBroadcast();
         } else {
             console.log("Funding deactivated here as it probably is already done");
-            // console.log("START BROADCASTING ON ACCOUNT =", account);
-            // vm.startBroadcast(account);
-            // LinkToken(linkToken).transferAndCall(vrfCoordinator, FUND_AMOUNT, abi.encode(subscriptionId));
-            // vm.stopBroadcast();
+            console.log("START BROADCASTING ON ACCOUNT =", account);
+
+            vm.startBroadcast(account);
+            LinkToken(linkToken).transferAndCall(vrfCoordinator, FUND_AMOUNT, abi.encode(subscriptionId));
+            vm.stopBroadcast();
         }
     }
 }

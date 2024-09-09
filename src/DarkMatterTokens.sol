@@ -9,11 +9,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 
 /// @custom:security-contact "strapontin" on discord. Join Cyfrin server to contact more easily.
 contract DarkMatterTokens is ERC20, ERC20Burnable, Ownable, ERC20Permit {
-    constructor()
-        ERC20("DarkMatterTokens", "DMT")
-        Ownable(msg.sender)
-        ERC20Permit("DarkMatterTokens")
-    {}
+    constructor() ERC20("DarkMatterTokens", "DMT") Ownable(msg.sender) ERC20Permit("DarkMatterTokens") {}
 
     function mint(address to, uint256 amount) public onlyOwner {
         _mint(to, amount);
