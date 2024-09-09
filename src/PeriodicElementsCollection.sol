@@ -4,33 +4,33 @@ pragma solidity ^0.8.20;
 
 import {console} from "forge-std/console.sol";
 import {ElementsData} from "./ElementsData.sol";
+import {DarkMatterTokens} from "./DarkMatterTokens.sol";
 
-import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
-import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol";
-import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import {ERC1155} from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
+import {ERC1155Burnable} from "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol";
+import {ERC1155Supply} from "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
 
 //Chainlink VRF imports
-import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
-import "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
+import {VRFConsumerBaseV2Plus} from "@chainlink/contracts/src/v0.8/vrf/dev/VRFConsumerBaseV2Plus.sol";
+import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
 
 /// @custom:security-contact "strapontin" on discord. Join Cyfrin server to contact more easily.
 contract PeriodicElementsCollection is
     ERC1155,
-    Ownable,
     ERC1155Burnable,
     ERC1155Supply,
-    VRFConsumerBaseV2,
+    VRFConsumerBaseV2Plus,
     ElementsData
 {
+    error PEC_NoFreePackAvailableAndNotEnoughEtherSendToMintPack();
+    error PEC_EthNotSend();
+
     string public constant name = "Periodic Elements Collection";
 
     mapping(uint256 => address) public _requestIdToMinter;
 
     // Chainlink Variables
-    VRFCoordinatorV2Interface private immutable coordinatorInterface;
-    uint64 public immutable subscriptionId;
-    address private immutable vrfCoordinatorV2Address;
+    uint256 public immutable subscriptionId;
     // TODO : put this value in constructor, define it in deployer.s.sol
     bytes32 keyHash = 0x474e34a077df58807dbe9c96d3c009b23b3c6d0cce433e59bbf5b34f823bc56c; // 750 gwei Sepolia
     uint32 callbackGasLimit = 1_000_000;
@@ -38,27 +38,22 @@ contract PeriodicElementsCollection is
     uint32 numWords = 1;
 
     // Gameplay variables
+    DarkMatterTokens public immutable darkMatterTokens;
     mapping(address user => uint256 timestampLastFreeMint) lastFreeMintFromUsers;
     uint256 mintPackPrice = 0.002 ether;
 
     event MintRequestInitalized(uint256 indexed requestId, address indexed account);
     event TokenMinted(address indexed account, uint256 indexed id);
 
-    error Error_PEC_NoFreePackAvailableAndNotEnoughEtherSendToMintPack();
-    error Error_PEC_EthNotSend();
-
-    constructor(uint64 _subscriptionId, address _vrfCoordinatorV2Address, ElementDataStruct[] memory datas)
-        VRFConsumerBaseV2(vrfCoordinatorV2Address)
+    constructor(uint256 _subscriptionId, address _vrfCoordinatorV2Address, ElementDataStruct[] memory datas)
+        VRFConsumerBaseV2Plus(_vrfCoordinatorV2Address)
         ElementsData(datas)
         ERC1155(
             "https://gray-acute-wildfowl-4.mypinata.cloud/ipfs/QmcYB1e51yEXG5hosQ2N8RP8zVLTy5wUrc6523Jy21YczT/{id}.json"
         )
-        Ownable(msg.sender)
     {
-        console.log(msg.sender);
         subscriptionId = _subscriptionId;
-        vrfCoordinatorV2Address = _vrfCoordinatorV2Address;
-        coordinatorInterface = VRFCoordinatorV2Interface(_vrfCoordinatorV2Address);
+        darkMatterTokens = new DarkMatterTokens();
     }
 
     function setURI(string memory newuri) public onlyOwner {
@@ -72,11 +67,12 @@ contract PeriodicElementsCollection is
 
         uint256 lastFreeMint = lastFreeMintFromUsers[msg.sender];
         uint256 numOfFreePacksAvailable =
-            lastFreeMint > startOfTheDay ? (lastFreeMint / 1 days) - (startOfTheDay / 1 days) : 0;
+            lastFreeMint < startOfTheDay ? (startOfTheDay / 1 days) - (lastFreeMint / 1 days) : 0;
 
         // If no free packs available and not enough ether send, revert
         if (numOfFreePacksAvailable == 0 && msg.value < mintPackPrice) {
-            revert Error_PEC_NoFreePackAvailableAndNotEnoughEtherSendToMintPack();
+            console.log(lastFreeMint, startOfTheDay);
+            revert PEC_NoFreePackAvailableAndNotEnoughEtherSendToMintPack();
         }
 
         lastFreeMint = block.timestamp;
@@ -91,20 +87,27 @@ contract PeriodicElementsCollection is
         uint32 totalNumElementsToMint = uint32((numOfFreePacksAvailable + numOfPaidPacksToMint) * elementsInPack);
         require(totalNumElementsToMint < 100, "Too many packs to mint");
 
-        requestId = coordinatorInterface.requestRandomWords(
-            keyHash, subscriptionId, blockConfirmations, callbackGasLimit, totalNumElementsToMint
-        );
+        VRFV2PlusClient.RandomWordsRequest memory request = VRFV2PlusClient.RandomWordsRequest({
+            keyHash: keyHash,
+            subId: subscriptionId,
+            requestConfirmations: blockConfirmations,
+            callbackGasLimit: callbackGasLimit,
+            numWords: totalNumElementsToMint,
+            extraArgs: VRFV2PlusClient._argsToBytes(VRFV2PlusClient.ExtraArgsV1({nativePayment: false}))
+        });
+
+        requestId = s_vrfCoordinator.requestRandomWords(request);
 
         _requestIdToMinter[requestId] = msg.sender;
 
         uint256 leftOverEth = msg.value - (mintPackPrice * numOfPaidPacksToMint);
         (bool sent,) = address(msg.sender).call{value: leftOverEth}("");
-        if (!sent) revert Error_PEC_EthNotSend();
+        if (!sent) revert PEC_EthNotSend();
 
         emit MintRequestInitalized(requestId, msg.sender);
     }
 
-    function fulfillRandomWords(uint256 requestId, uint256[] memory randomWords) internal override {
+    function fulfillRandomWords(uint256 requestId, uint256[] calldata randomWords) internal override {
         address accountMinting = _requestIdToMinter[requestId];
 
         // The minted element is selected from :

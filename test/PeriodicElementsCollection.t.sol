@@ -4,45 +4,32 @@ pragma solidity ^0.8.20;
 import {PeriodicElementsCollection} from "../src/PeriodicElementsCollection.sol";
 import {DarkMatterTokens} from "../src/DarkMatterTokens.sol";
 import {ElementsData} from "../src/ElementsData.sol";
-import {PeriodicElementsCollectionDeployer} from "../script/PeriodicElementsCollection.s.sol";
+import {HelperConfig} from "../script/HelperConfig.s.sol";
+import {PeriodicElementsCollectionDeployer} from "../script/PeriodicElementsCollectionDeployer.s.sol";
 
 import {Test, console} from "forge-std/Test.sol";
-import {VRFCoordinatorV2Mock} from
-    "../lib/chainlink-brownie-contracts/contracts/src/v0.8/mocks/VRFCoordinatorV2Mock.sol";
+import {VRFCoordinatorV2_5Mock} from "@chainlink/contracts/src/v0.8/vrf/mocks/VRFCoordinatorV2_5Mock.sol";
 
 contract PeriodicElementsCollectionTest is Test {
     PeriodicElementsCollection periodicElementsCollection;
-    DarkMatterTokens darkMatterTokens;
-    VRFCoordinatorV2Mock public mockVRF;
+    HelperConfig helperConfig;
 
-    address owner = makeAddr("owner");
+    address owner;
+    VRFCoordinatorV2_5Mock vrfCoordinator;
 
     function setUp() public {
-    }
 
-// Test this
-    function testIsAlive() public  {
-        darkMatterTokens = new DarkMatterTokens(owner);
-
-        (periodicElementsCollection, mockVRF) = (new PeriodicElementsCollectionDeployer()).run();
+        (periodicElementsCollection, helperConfig) = (new PeriodicElementsCollectionDeployer()).deployContract();
+        
+        owner = helperConfig.getConfig().account;
+        vrfCoordinator = VRFCoordinatorV2_5Mock(helperConfig.getConfig().vrfCoordinator);
 
         assert(address(periodicElementsCollection) != address(0));
         assertEq(owner, periodicElementsCollection.owner());
+    }
 
-        // funding the subscription with 1000 LINK
-        uint64 subId = periodicElementsCollection.subscriptionId();
-        mockVRF.fundSubscription(subId, 1000000000000000000000);
-
-
-
-
-
-
-
-
-
-
-
+    // Test this
+    function testIsAlive() public view {
         assertEq("Periodic Elements Collection", periodicElementsCollection.name());
         (uint8 number, string memory name, string memory symbol, uint256 ram, uint8 level) =
             periodicElementsCollection.elementsData(1);
@@ -58,6 +45,8 @@ contract PeriodicElementsCollectionTest is Test {
     }
 
     function testRandomness() public {
+        vm.warp(block.timestamp + 2 days);
+        
         for (uint256 i = 1; i <= 1000; i++) {
             address addr = address(bytes20(uint160(i)));
 
@@ -67,8 +56,8 @@ contract PeriodicElementsCollectionTest is Test {
             //Have to impersonate the VRFCoordinatorV2Mock contract
             //since only the VRFCoordinatorV2Mock contract
             //can call the fulfillRandomWords function
-            vm.prank(address(mockVRF));
-            mockVRF.fulfillRandomWords(requestID, address(periodicElementsCollection));
+            vm.prank(address(vrfCoordinator));
+            vrfCoordinator.fulfillRandomWords(requestID, address(periodicElementsCollection));
         }
 
         // //Calling the total supply function on all tokenIDs

@@ -1,32 +1,48 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {Script, console} from "forge-std/Script.sol";
 import {PeriodicElementsCollection} from "../src/PeriodicElementsCollection.sol";
 import {ElementsData} from "../src/ElementsData.sol";
-import {VRFCoordinatorV2Mock} from
-    "../lib/chainlink-brownie-contracts/contracts/src/v0.8/mocks/VRFCoordinatorV2Mock.sol";
+
+import {Script, console} from "forge-std/Script.sol";
+import {VRFCoordinatorV2_5Mock} from "@chainlink/contracts/src/v0.8/vrf/mocks/VRFCoordinatorV2_5Mock.sol";
+
+import {HelperConfig} from "./HelperConfig.s.sol";
+import {CreateSubscription, FundSubscription, AddConsumer} from "./VRFInteractions.s.sol";
 
 contract PeriodicElementsCollectionDeployer is Script {
-    function run()
-        public
-        returns (PeriodicElementsCollection periodicElementsCollection, VRFCoordinatorV2Mock mockVRF)
-    {
-        vm.startBroadcast();
+    function run() public {
+        deployContract();
+    }
 
-        // Can ignore this. Just sets some base values
-        // In real-world scenarios, you won't be deciding the
-        // constructor values of the coordinator contract anyways
-        mockVRF = new VRFCoordinatorV2Mock(100000000000000000, 1000000000);
+    function deployContract() public returns (PeriodicElementsCollection, HelperConfig) {
+        HelperConfig helperConfig = new HelperConfig();
+        HelperConfig.NetworkConfig memory config = helperConfig.getConfig();
 
-        // Creating a new subscription through account 0x1
-        uint64 subId = mockVRF.createSubscription();
+        // Create subscription
+        if (config.subscriptionId == 0) {
+            CreateSubscription createSubscription = new CreateSubscription();
+            (config.subscriptionId, config.vrfCoordinator) =
+                createSubscription.createSubscription(config.vrfCoordinator, config.account);
 
-        periodicElementsCollection = new PeriodicElementsCollection(subId, address(mockVRF), getElementsData());
+            // Fund it
+            FundSubscription fundSubscription = new FundSubscription();
+            fundSubscription.fundSubscription(config.vrfCoordinator, config.subscriptionId, config.link, config.account);
+        }
 
-        mockVRF.addConsumer(subId, address(periodicElementsCollection));
-
+        vm.startBroadcast(config.account);
+        PeriodicElementsCollection periodicElementsCollection =
+            new PeriodicElementsCollection(config.subscriptionId, address(config.vrfCoordinator), getElementsData());
         vm.stopBroadcast();
+
+        // Don't need to broadcast because it's in 'addConsumer'
+        AddConsumer addConsumer = new AddConsumer();
+        addConsumer.addConsumer(
+            address(periodicElementsCollection), config.vrfCoordinator, config.subscriptionId, config.account
+        );
+        // mockVRF.addConsumer(config.subscriptionId, address(periodicElementsCollection));
+
+        return (periodicElementsCollection, helperConfig);
     }
 
     // This function sets the default values for each elements
