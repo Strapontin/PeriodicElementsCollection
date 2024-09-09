@@ -30,7 +30,6 @@ contract PeriodicElementsCollectionTest is Test {
         assertEq(owner, periodicElementsCollection.owner());
     }
 
-    // Test this
     function testIsAlive() public view {
         assertEq("Periodic Elements Collection", periodicElementsCollection.name());
         (uint256 number, string memory name, string memory symbol, uint256 ram, uint256 level) =
@@ -58,6 +57,27 @@ contract PeriodicElementsCollectionTest is Test {
             );
         }
     }
+    
+
+    function test1Random() public {
+        vm.warp(block.timestamp + 25 hours);
+
+        address addr = address(bytes20(uint160(1)));
+
+        applyFundSubscription();
+
+        vm.prank(addr);
+        uint256 requestID = periodicElementsCollection.mintPack();
+
+        //Have to impersonate the VRFCoordinatorV2Mock contract
+        //since only the VRFCoordinatorV2Mock contract
+        //can call the fulfillRandomWords function
+        vm.prank(address(vrfCoordinator));
+        vrfCoordinator.fulfillRandomWords(requestID, address(periodicElementsCollection));
+
+        console.log(periodicElementsCollection.balanceOf(addr, 1));
+    }
+    
 
     function testRandomness() public {
         vm.warp(block.timestamp + 25 hours);
@@ -75,12 +95,15 @@ contract PeriodicElementsCollectionTest is Test {
             //can call the fulfillRandomWords function
             vm.prank(address(vrfCoordinator));
             vrfCoordinator.fulfillRandomWords(requestID, address(periodicElementsCollection));
+
+            console.log(periodicElementsCollection.balanceOf(addr, 1));
         }
 
-        // //Calling the total supply function on all tokenIDs
-        // //to get a final tally, before logging the values.
-        // supplytracker[1] = periodicElementsCollection.totalSupply(1);
-        // supplytracker[2] = periodicElementsCollection.totalSupply(2);
+        //Calling the total supply function on all tokenIDs
+        //to get a final tally, before logging the values.
+        console.log("TotalSupply", periodicElementsCollection.totalSupply());
+        console.log("Supply of tokenId 1 =", periodicElementsCollection.totalSupply(1));
+        console.log("Supply of tokenId 2 =", periodicElementsCollection.totalSupply(2));
         // supplytracker[3] = periodicElementsCollection.totalSupply(3);
 
         // console2.log("Supply with tokenID 1 is " , supplytracker[1]);

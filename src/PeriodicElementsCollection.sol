@@ -15,8 +15,8 @@ import {VRFConsumerBaseV2Plus} from "@chainlink/contracts/src/v0.8/vrf/dev/VRFCo
 import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
 
 /// @custom:security-contact "strapontin" on discord. Join Cyfrin server to contact more easily.
-contract PeriodicElementsCollection is ERC1155, ERC1155Burnable, ERC1155Supply, VRFConsumerBaseV2Plus, ElementsData {
-    error PEC_NoFreePackAvailableAndNotEnoughEtherSendToMintPack();
+contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, ElementsData {
+    error PEC_NoPackToMint();
     error PEC_EthNotSend();
 
     string public constant name = "Periodic Elements Collection";
@@ -44,6 +44,7 @@ contract PeriodicElementsCollection is ERC1155, ERC1155Burnable, ERC1155Supply, 
         ERC1155(
             "https://gray-acute-wildfowl-4.mypinata.cloud/ipfs/QmcYB1e51yEXG5hosQ2N8RP8zVLTy5wUrc6523Jy21YczT/{id}.json"
         )
+        ERC1155Supply()
     {
         subscriptionId = _subscriptionId;
         darkMatterTokens = new DarkMatterTokens();
@@ -63,8 +64,7 @@ contract PeriodicElementsCollection is ERC1155, ERC1155Burnable, ERC1155Supply, 
 
         // If no free packs available and not enough ether send, revert
         if (numOfFreePacksAvailable == 0 && msg.value < mintPackPrice) {
-            console.log(lastFreeMint, startOfTheDay);
-            revert PEC_NoFreePackAvailableAndNotEnoughEtherSendToMintPack();
+            revert PEC_NoPackToMint();
         }
 
         lastFreeMint = block.timestamp;
@@ -116,9 +116,12 @@ contract PeriodicElementsCollection is ERC1155, ERC1155Burnable, ERC1155Supply, 
             // If the number is a multiple of 10_000, the minted element is antimatter
             uint256 tokenId = pickRandomElementAvailable(randomWords[wordsId]);
 
-            if (randomWords[wordsId] % 10_000 == 0) {
+            console.log("randomWords[wordId]", randomWords[wordsId]);
+            if (randomWords[wordsId] % 2 == 0) {
                 // This is an antimatter element
                 tokenId += 10_000;
+                // why doesn't this throw ? forge test -vvv --mt test1Random
+                require(false, "PERFECT ! AN ANTIMATTER");
             }
 
             // Updates the number of elementsToMint
@@ -149,7 +152,7 @@ contract PeriodicElementsCollection is ERC1155, ERC1155Burnable, ERC1155Supply, 
 
     function _update(address from, address to, uint256[] memory ids, uint256[] memory values)
         internal
-        override(ERC1155, ERC1155Supply)
+        override(ERC1155Supply)
     {
         // put the code to run **before** the transfer HERE
         super._update(from, to, ids, values);
