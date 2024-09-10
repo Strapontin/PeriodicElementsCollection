@@ -49,6 +49,10 @@ contract FundSubscription is Script, CodeConstants {
     }
 
     function fundSubscription(HelperConfig.NetworkConfig memory networkConfig) public {
+        fundSubscription(networkConfig, FUND_AMOUNT);
+    }
+
+    function fundSubscription(HelperConfig.NetworkConfig memory networkConfig, uint256 fundAmount) public {
         address vrfCoordinator = networkConfig.vrfCoordinator;
         uint256 subscriptionId = networkConfig.subscriptionId;
         address linkToken = networkConfig.link;
@@ -60,14 +64,14 @@ contract FundSubscription is Script, CodeConstants {
 
         if (block.chainid == LOCAL_CHAIN_ID) {
             vm.startBroadcast();
-            VRFCoordinatorV2_5Mock(vrfCoordinator).fundSubscription(subscriptionId, FUND_AMOUNT * 100);
+            VRFCoordinatorV2_5Mock(vrfCoordinator).fundSubscription(subscriptionId, fundAmount);
             vm.stopBroadcast();
         } else {
             console.log("Funding deactivated here as it probably is already done");
             console.log("START BROADCASTING ON ACCOUNT =", account);
 
             vm.startBroadcast(account);
-            LinkToken(linkToken).transferAndCall(vrfCoordinator, FUND_AMOUNT, abi.encode(subscriptionId));
+            LinkToken(linkToken).transferAndCall(vrfCoordinator, fundAmount, abi.encode(subscriptionId));
             vm.stopBroadcast();
         }
     }

@@ -14,8 +14,11 @@ import {FundSubscription} from "../script/VRFInteractions.s.sol";
 contract PeriodicElementsCollectionTest is Test {
     PeriodicElementsCollection periodicElementsCollection;
     HelperConfig helperConfig;
+    HelperConfig.NetworkConfig config;
 
     address owner;
+    address user = makeAddr("user");
+
     VRFCoordinatorV2_5Mock vrfCoordinator;
     FundSubscription fundSubscription;
 
@@ -23,11 +26,13 @@ contract PeriodicElementsCollectionTest is Test {
         (periodicElementsCollection, helperConfig) = (new PeriodicElementsCollectionDeployer()).deployContract();
         fundSubscription = new FundSubscription();
 
-        owner = helperConfig.getConfig().account;
-        vrfCoordinator = VRFCoordinatorV2_5Mock(helperConfig.getConfig().vrfCoordinator);
+        config = helperConfig.getConfig();
+        config.subscriptionId = periodicElementsCollection.subscriptionId();
+
+        vrfCoordinator = VRFCoordinatorV2_5Mock(config.vrfCoordinator);
 
         assert(address(periodicElementsCollection) != address(0));
-        assertEq(owner, periodicElementsCollection.owner());
+        assertEq(config.account, periodicElementsCollection.owner());
     }
 
     function testIsAlive() public view {
@@ -45,6 +50,14 @@ contract PeriodicElementsCollectionTest is Test {
         assertEq(expectedRAM, periodicElementsCollection.getElementArtificialRAMWeight(1));
     }
 
+    /**
+     * VRF tests
+     */
+    modifier fundSubscriptionMax() {
+        fundSubscription.fundSubscription(config, type(uint256).max - 3 ether);
+        _;
+    }
+
     function testElementsLevelIsCorrect() public view {
         for (uint256 lvl = 1; lvl <= 7; lvl++) {
             uint256[] memory lvlElements = periodicElementsCollection.getElementsUnlockedUnderLevel(lvl);
@@ -57,37 +70,22 @@ contract PeriodicElementsCollectionTest is Test {
             );
         }
     }
-    
 
-    function test1Random() public {
-        vm.warp(block.timestamp + 25 hours);
+    function testFulfillRandomWordsCanOnlyBeCalledAfterRequestId() public {
+        vm.expectRevert(VRFCoordinatorV2_5Mock.InvalidRequest.selector);
+        VRFCoordinatorV2_5Mock(vrfCoordinator).fulfillRandomWords(0, address(periodicElementsCollection));
 
-        address addr = address(bytes20(uint160(1)));
-
-        applyFundSubscription();
-
-        vm.prank(addr);
-        uint256 requestID = periodicElementsCollection.mintPack();
-
-        //Have to impersonate the VRFCoordinatorV2Mock contract
-        //since only the VRFCoordinatorV2Mock contract
-        //can call the fulfillRandomWords function
-        vm.prank(address(vrfCoordinator));
-        vrfCoordinator.fulfillRandomWords(requestID, address(periodicElementsCollection));
-
-        console.log(periodicElementsCollection.balanceOf(addr, 1));
+        vm.expectRevert(VRFCoordinatorV2_5Mock.InvalidRequest.selector);
+        VRFCoordinatorV2_5Mock(vrfCoordinator).fulfillRandomWords(1, address(periodicElementsCollection));
     }
-    
 
-    function testRandomness() public {
+    function testRandomness() public fundSubscriptionMax {
+        uint256 numOfUsers = 1000;
+
         vm.warp(block.timestamp + 25 hours);
 
-        for (uint256 i = 1; i <= 1000; i++) {
-            address addr = address(bytes20(uint160(i)));
-
-            applyFundSubscription();
-
-            vm.prank(addr);
+        for (uint256 i = 1; i <= numOfUsers; i++) {
+            vm.prank(address(bytes20(uint160(i))));
             uint256 requestID = periodicElementsCollection.mintPack();
 
             //Have to impersonate the VRFCoordinatorV2Mock contract
@@ -95,28 +93,42 @@ contract PeriodicElementsCollectionTest is Test {
             //can call the fulfillRandomWords function
             vm.prank(address(vrfCoordinator));
             vrfCoordinator.fulfillRandomWords(requestID, address(periodicElementsCollection));
-
-            console.log(periodicElementsCollection.balanceOf(addr, 1));
         }
 
         //Calling the total supply function on all tokenIDs
         //to get a final tally, before logging the values.
         console.log("TotalSupply", periodicElementsCollection.totalSupply());
+        assertEq(numOfUsers * 5, periodicElementsCollection.totalSupply());
+
         console.log("Supply of tokenId 1 =", periodicElementsCollection.totalSupply(1));
         console.log("Supply of tokenId 2 =", periodicElementsCollection.totalSupply(2));
-        // supplytracker[3] = periodicElementsCollection.totalSupply(3);
-
-        // console2.log("Supply with tokenID 1 is " , supplytracker[1]);
-        // console2.log("Supply with tokenID 2 is " , supplytracker[2]);
-        // console2.log("Supply with tokenID 3 is " , supplytracker[3]);
+        console.log("Supply of antimatter tokenId 1 =", periodicElementsCollection.totalSupply(10_001));
+        console.log("Supply of antimatter tokenId 2 =", periodicElementsCollection.totalSupply(10_002));
     }
 
-    /**
-     * Private functions
-     */
-    function applyFundSubscription() private {
-        HelperConfig.NetworkConfig memory config = helperConfig.getConfig();
-        config.subscriptionId = periodicElementsCollection.subscriptionId();
-        fundSubscription.fundSubscription(config);
+    function testUserCanMintOneFreePackPerDay() public fundSubscriptionMax {
+        uint256 totalMintedElements = 0;
+        vm.warp(block.timestamp + 12 hours);
+
+        // User mints daily for 100 days
+        for (uint256 i = 0; i < 100; i++) {
+            vm.warp(block.timestamp + 1 days);
+
+            vm.prank(user);
+            uint256 requestID = periodicElementsCollection.mintPack();
+
+            vm.prank(address(vrfCoordinator));
+            vrfCoordinator.fulfillRandomWords(requestID, address(periodicElementsCollection));
+
+            assertEq(totalMintedElements + 5, periodicElementsCollection.totalSupply());
+            totalMintedElements = periodicElementsCollection.totalSupply();
+        }
+
+        assertEq(500, periodicElementsCollection.totalSupply());
+        assertEq(500, periodicElementsCollection.totalSupply(1) + periodicElementsCollection.totalSupply(2));
     }
+
+    // Level up user and test pack mints
+    // TODO : Create a test contract that inherit the normal contract.
+    // The test contract contains additionnal getters/setters to interact and set states of specific variables
 }

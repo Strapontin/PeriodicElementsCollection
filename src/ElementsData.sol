@@ -40,11 +40,7 @@ contract ElementsData {
             weights[i] = getElementArtificialRAMWeight(elementsUnlocked[i]);
             totalWeight += weights[i];
         }
-
-        if (randomWord < totalWeight) {
-            // TODO : This is for debugging purposes, to be removed before production
-            require(false, "!!!!!!!!! WARNING !!!!!!!! -- totalWeight seem to be too low !");
-        }
+        
         uint256 random = randomWord % totalWeight;
 
         uint256 cumulativeWeight = 0;

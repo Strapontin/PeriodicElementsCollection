@@ -14,7 +14,9 @@ import {ERC1155Supply} from "@openzeppelin/contracts/token/ERC1155/extensions/ER
 import {VRFConsumerBaseV2Plus} from "@chainlink/contracts/src/v0.8/vrf/dev/VRFConsumerBaseV2Plus.sol";
 import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
 
-/// @custom:security-contact "strapontin" on discord. Join Cyfrin server to contact more easily.
+/// @custom:security-contact
+/// "strapontin" on discord
+/// https://x.com/0xStrapontin on X
 contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, ElementsData {
     error PEC_NoPackToMint();
     error PEC_EthNotSend();
@@ -56,8 +58,11 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
 
     function mintPack() public payable returns (uint256 requestId) {
         // The next two lines returns the timestamp at the start of the day
-        uint256 startOfTheDay = block.timestamp / 1 days;
-        startOfTheDay = startOfTheDay * 1 days;
+        uint256 startOfTheDay;
+        unchecked {
+            startOfTheDay = block.timestamp / 1 days;
+            startOfTheDay = startOfTheDay * 1 days;
+        }
 
         uint256 lastFreeMint = lastFreeMintFromUsers[msg.sender];
         uint256 numOfFreePacksAvailable = (startOfTheDay / 1 days) - (lastFreeMint / 1 days);
@@ -67,7 +72,7 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
             revert PEC_NoPackToMint();
         }
 
-        lastFreeMint = block.timestamp;
+        lastFreeMintFromUsers[msg.sender] = block.timestamp;
 
         // Max 7 days free minting
         if (numOfFreePacksAvailable > 7) {
@@ -104,45 +109,50 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
     function fulfillRandomWords(uint256 requestId, uint256[] calldata randomWords) internal override {
         address accountMinting = _requestIdToMinter[requestId];
 
-        uint256[] memory ids = new uint256[](240);
-        uint256[] memory values = new uint256[](240);
+        uint256[] memory ids = new uint256[](randomWords.length);
+        uint256[] memory values = new uint256[](randomWords.length);
+        uint256 uniqueTokenCount = 0;
 
-        // The minted element is selected from :
-        //  - the elements under playerLevel
-        //  - relative to the available elements RAM
-
-        // For each randomWords, we mint one card
+        // Process each randomWord to determine the tokenId and its quantity
         for (uint256 wordsId = 0; wordsId < randomWords.length; wordsId++) {
-            // If the number is a multiple of 10_000, the minted element is antimatter
             uint256 tokenId = pickRandomElementAvailable(randomWords[wordsId]);
 
-            console.log("randomWords[wordId]", randomWords[wordsId]);
-            if (randomWords[wordsId] % 2 == 0) {
-                // This is an antimatter element
-                tokenId += 10_000;
-                // why doesn't this throw ? forge test -vvv --mt test1Random
-                require(false, "PERFECT ! AN ANTIMATTER");
+            unchecked {
+                if (randomWords[wordsId] % 10_000 == 0) {
+                    // This is an antimatter element
+                    tokenId += 10_000;
+                }
             }
 
-            // Updates the number of elementsToMint
-            uint256 firstZeroValueIndex = 999;
-            for (uint256 i = 0; i < ids.length; i++) {
+            // Check if this tokenId already exists in ids array
+            bool tokenFound = false;
+            for (uint256 i = 0; i < uniqueTokenCount; i++) {
                 if (ids[i] == tokenId) {
-                    values[i]++;
-                    break;
-                } else if (ids[i] == 0) {
-                    firstZeroValueIndex = i;
+                    unchecked {
+                        values[i]++; // Increase the count for this token
+                    }
+                    tokenFound = true;
                     break;
                 }
             }
-            // Adds the element to mint if first of pack
-            if (firstZeroValueIndex != 999) {
-                ids[firstZeroValueIndex] = tokenId;
-                values[firstZeroValueIndex] = 1;
+
+            // If tokenId is not found, add it as a new unique token
+            if (!tokenFound) {
+                ids[uniqueTokenCount] = tokenId;
+                values[uniqueTokenCount] = 1;
+                unchecked {
+                    uniqueTokenCount++;
+                }
             }
         }
 
-        // Finally mint the tokens
+        // Resize the arrays to the unique count
+        assembly {
+            mstore(ids, uniqueTokenCount)
+            mstore(values, uniqueTokenCount)
+        }
+
+        // Finally, mint the tokens
         _mintBatch(accountMinting, ids, values, "");
     }
 
