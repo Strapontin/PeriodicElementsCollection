@@ -20,10 +20,11 @@ import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/V
 contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, ElementsData {
     error PEC_NoPackToMint();
     error PEC_EthNotSend();
+    error PEC_TooManyPacksAtOnce();
 
     string public constant name = "Periodic Elements Collection";
 
-    mapping(uint256 => address) public _requestIdToMinter;
+    mapping(uint256 => address) public requestIdToMinter;
 
     // Chainlink Variables
     uint256 public immutable subscriptionId;
@@ -36,7 +37,7 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
     // Gameplay variables
     DarkMatterTokens public immutable darkMatterTokens;
     mapping(address user => uint256 timestampLastFreeMint) lastFreeMintFromUsers;
-    uint256 mintPackPrice = 0.002 ether;
+    uint256 public mintPackPrice = 0.002 ether;
 
     event MintRequestInitalized(uint256 indexed requestId, address indexed account);
 
@@ -68,9 +69,7 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
         uint256 numOfFreePacksAvailable = (startOfTheDay / 1 days) - (lastFreeMint / 1 days);
 
         // If no free packs available and not enough ether send, revert
-        if (numOfFreePacksAvailable == 0 && msg.value < mintPackPrice) {
-            revert PEC_NoPackToMint();
-        }
+        if (numOfFreePacksAvailable == 0 && msg.value < mintPackPrice) revert PEC_NoPackToMint();
 
         lastFreeMintFromUsers[msg.sender] = block.timestamp;
 
@@ -82,7 +81,7 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
         uint256 numOfPaidPacksToMint = msg.value / mintPackPrice;
         uint256 elementsInPack = 5;
         uint32 totalNumElementsToMint = uint32((numOfFreePacksAvailable + numOfPaidPacksToMint) * elementsInPack);
-        require(totalNumElementsToMint < 100, "Too many packs to mint");
+        if (totalNumElementsToMint >= 100) revert PEC_TooManyPacksAtOnce();
 
         VRFV2PlusClient.RandomWordsRequest memory request = VRFV2PlusClient.RandomWordsRequest({
             keyHash: keyHash,
@@ -95,7 +94,7 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
 
         requestId = s_vrfCoordinator.requestRandomWords(request);
 
-        _requestIdToMinter[requestId] = msg.sender;
+        requestIdToMinter[requestId] = msg.sender;
 
         uint256 leftOverEth = msg.value - (mintPackPrice * numOfPaidPacksToMint);
         if (leftOverEth != 0) {
@@ -107,7 +106,7 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
     }
 
     function fulfillRandomWords(uint256 requestId, uint256[] calldata randomWords) internal override {
-        address accountMinting = _requestIdToMinter[requestId];
+        address accountMinting = requestIdToMinter[requestId];
 
         uint256[] memory ids = new uint256[](randomWords.length);
         uint256[] memory values = new uint256[](randomWords.length);

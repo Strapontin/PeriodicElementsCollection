@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {PeriodicElementsCollection} from "../src/PeriodicElementsCollection.sol";
+import {PeriodicElementsCollectionTestContract} from "../test/contracts/PeriodicElementsCollectionTestContract.sol";
 import {ElementsData} from "../src/ElementsData.sol";
 
 import {Script, console} from "forge-std/Script.sol";
@@ -11,11 +12,13 @@ import {HelperConfig} from "./HelperConfig.s.sol";
 import {CreateSubscription, FundSubscription, AddConsumer} from "./VRFInteractions.s.sol";
 
 contract PeriodicElementsCollectionDeployer is Script {
+    uint256 public constant LOCAL_CHAIN_ID = 31337;
+
     function run() public {
         deployContract();
     }
 
-    function deployContract() public returns (PeriodicElementsCollection, HelperConfig) {
+    function deployContract() public returns (address, HelperConfig) {
         HelperConfig helperConfig = new HelperConfig();
         HelperConfig.NetworkConfig memory config = helperConfig.getConfig();
 
@@ -30,15 +33,26 @@ contract PeriodicElementsCollectionDeployer is Script {
             fundSubscription.fundSubscription(config);
         }
 
+        address periodicElementsCollection;
+
         vm.startBroadcast(config.account);
-        PeriodicElementsCollection periodicElementsCollection =
-            new PeriodicElementsCollection(config.subscriptionId, address(config.vrfCoordinator), getElementsData());
+        // If we're on the anvil network, deploy the test contract
+        if (block.chainid == LOCAL_CHAIN_ID) {
+            periodicElementsCollection = address(
+                new PeriodicElementsCollectionTestContract(
+                    config.subscriptionId, config.vrfCoordinator, getElementsData()
+                )
+            );
+        } else {
+            periodicElementsCollection =
+                address(new PeriodicElementsCollection(config.subscriptionId, config.vrfCoordinator, getElementsData()));
+        }
         vm.stopBroadcast();
 
         // Don't need to broadcast because it's in 'addConsumer'
         AddConsumer addConsumer = new AddConsumer();
         addConsumer.addConsumer(
-            address(periodicElementsCollection), config.vrfCoordinator, config.subscriptionId, config.account
+            periodicElementsCollection, config.vrfCoordinator, config.subscriptionId, config.account
         );
 
         return (periodicElementsCollection, helperConfig);
