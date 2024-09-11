@@ -114,7 +114,7 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
 
         // Process each randomWord to determine the tokenId and its quantity
         for (uint256 wordsId = 0; wordsId < randomWords.length; wordsId++) {
-            uint256 tokenId = pickRandomElementAvailable(randomWords[wordsId]);
+            uint256 tokenId = pickRandomElementAvailable(accountMinting, randomWords[wordsId]);
 
             unchecked {
                 if (randomWords[wordsId] % 10_000 == 0) {

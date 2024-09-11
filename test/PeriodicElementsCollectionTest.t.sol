@@ -162,20 +162,21 @@ contract PeriodicElementsCollectionTest is Test {
         }
     }
 
-    // function testUserCanMintElementsUnderHisLevel() public fundSubscriptionMax setAllEllementsArtificialRamEqual {
-    //     vm.warp(block.timestamp + 25 hours);
+    function testUserCanMintElementsUnderHisLevel() public fundSubscriptionMax setAllEllementsArtificialRamEqual {
+        vm.warp(block.timestamp + 25 hours);
 
-    //     pec.setUserLevel(user, 1); <- Check this
-    //     assertEq(1, pec.getUserLevel(user));
+        uint256 levelToSet = 1;
+        pec.setUserLevel(user, levelToSet);
+        assertEq(levelToSet, pec.getUserLevel(user));
 
-    //     // Mints elements
-    //     vm.prank(user);
-    //     uint256 requestId = pec.mintPack();
+        // Mints elements
+        vm.prank(user);
+        uint256 requestId = pec.mintPack();
 
-    //     vm.prank(address(vrfCoordinator));
-    //     vrfCoordinator.fulfillRandomWords(requestId, address(pec));
+        vm.prank(address(vrfCoordinator));
+        vrfCoordinator.fulfillRandomWords(requestId, address(pec));
 
-    //     // assert(pec.totalSupply(1) + pec.totalSupply(2) < 5);
-    //     assertLt(pec.totalSupply(1) + pec.totalSupply(2), 5);
-    // }
+        // Less
+        assertLt(pec.totalSupply(1) + pec.totalSupply(2) + pec.totalSupply(10_001) + pec.totalSupply(10_002), 5);
+    }
 }

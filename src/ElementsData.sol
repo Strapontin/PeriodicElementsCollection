@@ -28,8 +28,8 @@ contract ElementsData {
         }
     }
 
-    function pickRandomElementAvailable(uint256 randomWord) internal view returns (uint256) {
-        uint256 userLevel = usersLevel[msg.sender];
+    function pickRandomElementAvailable(address user, uint256 randomWord) internal view returns (uint256) {
+        uint256 userLevel = usersLevel[user];
         uint256[] memory elementsUnlocked = elementsUnlockedUnderLevel[userLevel];
         uint256 availableElementsLength = elementsUnlocked.length;
 
