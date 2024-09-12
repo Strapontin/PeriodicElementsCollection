@@ -27,8 +27,9 @@ The randomness of the minted element depends on available elements (user level) 
 
 For every element minted, there is a 1/10_000 chances to mint an antimatter element. The same rules (regarding levels) apply here.
 
-### Batch Minting
 Allows minting of multiple packs, given the amount of eth transfered.
+
+If a user tries to mints too many packs at once (more than 20, so more than 100 elements), they will mint the maximum amount possible and get a refund for the leftover eth they send;
 
 ### Minting Level
 Users start at minting level 1 (Hydrogen & Helium level). When they have all elements of a level, they can burn them to earn a random element of the next level. If a user earns this way an element of a higher level, they level up +1 (can’t skip 3 levels if someone else transferred the elements).

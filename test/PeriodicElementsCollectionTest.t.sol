@@ -138,20 +138,35 @@ contract PeriodicElementsCollectionTest is Test {
         assertEq(500, pec.balanceOf(user, 1) + pec.balanceOf(user, 2));
     }
 
-    function testUserCanMintMorePacksIfPayCorrectAmount(uint256 nbMints) public fundSubscriptionMax {
-        nbMints = bound(nbMints, 0, 150);
-        vm.deal(user, pec.mintPackPrice() * nbMints);
+    function testUserCanMintMorePacksIfPayCorrectAmount(uint256 nbPacksToMints) public fundSubscriptionMax {
+        nbPacksToMints = bound(nbPacksToMints, 1, 20);
+        vm.deal(user, pec.mintPackPrice() * nbPacksToMints);
 
-        for (uint256 i = 0; i < nbMints; i++) {
-            vm.startPrank(user);
-            uint256 requestId = pec.mintPack{value: pec.mintPackPrice()}();
-            vm.stopPrank();
+        vm.startPrank(user);
+        uint256 requestId = pec.mintPack{value: pec.mintPackPrice() * nbPacksToMints}();
+        vm.stopPrank();
 
-            vm.prank(address(vrfCoordinator));
-            vrfCoordinator.fulfillRandomWords(requestId, address(pec));
-        }
+        vm.prank(address(vrfCoordinator));
+        vrfCoordinator.fulfillRandomWords(requestId, address(pec));
 
-        assertEq(5 * nbMints, pec.totalSupply());
+        assertEq(pec.ELEMENTS_IN_PACK() * nbPacksToMints, pec.totalSupply());
+    }
+
+    function testRefundIfUserPayTooMuch() public fundSubscriptionMax {
+        uint256 initialUserFund = 1 ether;
+        vm.deal(user, initialUserFund);
+
+        vm.startPrank(user);
+        uint256 requestId = pec.mintPack{value: initialUserFund}();
+        vm.stopPrank();
+
+        vm.prank(address(vrfCoordinator));
+        vrfCoordinator.fulfillRandomWords(requestId, address(pec));
+
+        assertEq(pec.NUM_MAX_ELEMENTS_MINTED_AT_ONCE(), pec.totalSupply(), "Not correct amount of elements minted");
+
+        uint256 expectedRefund = initialUserFund - (pec.mintPackPrice() * pec.totalSupply() / pec.ELEMENTS_IN_PACK());
+        assertEq(expectedRefund, user.balance, "User should be refunded correct amount");
     }
 
     function testSetAllEllementsArtificialRamEqual() public setAllEllementsArtificialRamEqual {
@@ -176,7 +191,7 @@ contract PeriodicElementsCollectionTest is Test {
         vm.prank(address(vrfCoordinator));
         vrfCoordinator.fulfillRandomWords(requestId, address(pec));
 
-        // Less
+        // LVL 1 elements are not the only ones minted
         assertLt(pec.totalSupply(1) + pec.totalSupply(2) + pec.totalSupply(10_001) + pec.totalSupply(10_002), 5);
     }
 }

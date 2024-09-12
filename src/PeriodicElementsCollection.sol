@@ -20,19 +20,19 @@ import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/V
 contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, ElementsData {
     error PEC_NoPackToMint();
     error PEC_EthNotSend();
-    error PEC_TooManyPacksAtOnce();
 
     string public constant name = "Periodic Elements Collection";
+    uint256 public constant ELEMENTS_IN_PACK = 5;
+    uint256 public constant NUM_MAX_ELEMENTS_MINTED_AT_ONCE = 100;
 
     mapping(uint256 => address) public requestIdToMinter;
 
     // Chainlink Variables
     uint256 public immutable subscriptionId;
     // TODO : put this value in constructor, define it in deployer.s.sol
-    bytes32 keyHash = 0x474e34a077df58807dbe9c96d3c009b23b3c6d0cce433e59bbf5b34f823bc56c; // 750 gwei Sepolia
-    uint32 callbackGasLimit = 1_000_000;
-    uint16 blockConfirmations = 10;
-    uint32 numWords = 1;
+    bytes32 constant KEY_HASH = 0x474e34a077df58807dbe9c96d3c009b23b3c6d0cce433e59bbf5b34f823bc56c; // 750 gwei Sepolia
+    uint32 constant CALLBACK_GAS_LIMIT = 1_000_000;
+    uint16 constant BLOCK_CONFIRMATIONS = 10;
 
     // Gameplay variables
     DarkMatterTokens public immutable darkMatterTokens;
@@ -79,15 +79,19 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
         }
 
         uint256 numOfPaidPacksToMint = msg.value / mintPackPrice;
-        uint256 elementsInPack = 5;
-        uint32 totalNumElementsToMint = uint32((numOfFreePacksAvailable + numOfPaidPacksToMint) * elementsInPack);
-        if (totalNumElementsToMint >= 100) revert PEC_TooManyPacksAtOnce();
+        uint32 totalNumElementsToMint = uint32((numOfFreePacksAvailable + numOfPaidPacksToMint) * ELEMENTS_IN_PACK);
+
+        // Too many packs minted (because of high msg.value)
+        if (totalNumElementsToMint > NUM_MAX_ELEMENTS_MINTED_AT_ONCE) {
+            numOfPaidPacksToMint -= (totalNumElementsToMint - NUM_MAX_ELEMENTS_MINTED_AT_ONCE) / ELEMENTS_IN_PACK;
+            totalNumElementsToMint = uint32(NUM_MAX_ELEMENTS_MINTED_AT_ONCE);
+        }
 
         VRFV2PlusClient.RandomWordsRequest memory request = VRFV2PlusClient.RandomWordsRequest({
-            keyHash: keyHash,
+            keyHash: KEY_HASH,
             subId: subscriptionId,
-            requestConfirmations: blockConfirmations,
-            callbackGasLimit: callbackGasLimit,
+            requestConfirmations: BLOCK_CONFIRMATIONS,
+            callbackGasLimit: CALLBACK_GAS_LIMIT,
             numWords: totalNumElementsToMint,
             extraArgs: VRFV2PlusClient._argsToBytes(VRFV2PlusClient.ExtraArgsV1({nativePayment: false}))
         });
