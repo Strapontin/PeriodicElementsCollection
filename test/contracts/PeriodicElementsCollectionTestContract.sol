@@ -34,6 +34,6 @@ contract PeriodicElementsCollectionTestContract is PeriodicElementsCollection {
 
     function fulfillRandomWords(uint256 requestId, uint256[] calldata randomWords) internal override {
         // pre-logic to implement for tests
-        _fulfillRandomWords(requestId, randomWords);
+        storeRandomnessResult(requestId, randomWords);
     }
 }

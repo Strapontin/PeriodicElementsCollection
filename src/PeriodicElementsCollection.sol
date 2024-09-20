@@ -21,17 +21,30 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
     error PEC_NoPackToMint();
     error PEC_EthNotSend();
 
+    enum VRFStatus {
+        None,
+        PendingVRFCallback,
+        ReadyToMint,
+        Minted
+    }
+
+    struct VRFState {
+        address minterAddress;
+        uint256[] randomWords;
+        VRFStatus status;
+    }
+
     string public constant name = "Periodic Elements Collection";
     uint256 public constant ELEMENTS_IN_PACK = 5;
     uint256 public constant NUM_MAX_ELEMENTS_MINTED_AT_ONCE = 100;
 
-    mapping(uint256 => address) public requestIdToMinter;
+    mapping(uint256 => VRFState) public requestIdToVRFState;
 
     // Chainlink Variables
     uint256 public immutable subscriptionId;
     // TODO : put this value in constructor, define it in deployer.s.sol
     bytes32 constant KEY_HASH = 0x474e34a077df58807dbe9c96d3c009b23b3c6d0cce433e59bbf5b34f823bc56c; // 750 gwei Sepolia
-    uint32 constant CALLBACK_GAS_LIMIT = 1_000_000;
+    uint32 constant CALLBACK_GAS_LIMIT = 1_000_000_000;
     uint16 constant BLOCK_CONFIRMATIONS = 10;
 
     // Gameplay variables
@@ -98,7 +111,8 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
 
         requestId = s_vrfCoordinator.requestRandomWords(request);
 
-        requestIdToMinter[requestId] = msg.sender;
+        requestIdToVRFState[requestId].minterAddress = msg.sender;
+        requestIdToVRFState[requestId].status = VRFStatus.PendingVRFCallback;
 
         uint256 leftOverEth = msg.value - (mintPackPrice * numOfPaidPacksToMint);
         if (leftOverEth != 0) {
@@ -110,23 +124,29 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
     }
 
     function fulfillRandomWords(uint256 requestId, uint256[] calldata randomWords) internal virtual override {
-        _fulfillRandomWords(requestId, randomWords);
+        storeRandomnessResult(requestId, randomWords);
     }
 
     // TODO : maybe change the name for the function ?
-    function _fulfillRandomWords(uint256 requestId, uint256[] memory randomWords) internal {
-        address accountMinting = requestIdToMinter[requestId];
+    function storeRandomnessResult(uint256 requestId, uint256[] memory randomWords) internal {
+        for (uint256 i = 0; i < randomWords.length; i++) {
+            requestIdToVRFState[requestId].randomWords.push(randomWords[i]);
+        }
+    }
 
-        uint256[] memory ids = new uint256[](randomWords.length);
-        uint256[] memory values = new uint256[](randomWords.length);
+    function fulfillMintCard(uint256 requestId) public {
+        VRFState memory vrfState = requestIdToVRFState[requestId];
+
+        uint256[] memory ids = new uint256[](vrfState.randomWords.length);
+        uint256[] memory values = new uint256[](vrfState.randomWords.length);
         uint256 uniqueTokenCount = 0;
 
         // Process each randomWord to determine the tokenId and its quantity
-        for (uint256 wordsId = 0; wordsId < randomWords.length; wordsId++) {
-            uint256 tokenId = pickRandomElementAvailable(accountMinting, randomWords[wordsId]);
+        for (uint256 wordsId = 0; wordsId < vrfState.randomWords.length; wordsId++) {
+            uint256 tokenId = pickRandomElementAvailable(vrfState.minterAddress, vrfState.randomWords[wordsId]);
 
             unchecked {
-                if (randomWords[wordsId] % 10_000 == 0) {
+                if (vrfState.randomWords[wordsId] % 10_000 == 0) {
                     // This is an antimatter element
                     tokenId += 10_000;
                 }
@@ -161,7 +181,7 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
         }
 
         // Finally, mint the tokens
-        _mintBatch(accountMinting, ids, values, "");
+        _mintBatch(vrfState.minterAddress, ids, values, "");
     }
 
     function getElementsUnlockedUnderLevel(uint256 level) public view returns (uint256[] memory) {

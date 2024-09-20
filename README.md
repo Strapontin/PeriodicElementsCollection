@@ -65,9 +65,10 @@ If a user manages to collect the entire periodic table of antimatter, they can w
 ### LINK tokens
 In order for the application to work as intended, the subscription contract needs to own enough LINK to start a VRF request. In order to incentivize users to fund LINKs to the contract, they would earn cards/packs for doing so. The amount of the reward should depend on the amount of LINK transfered.
 
+### Handling Randomness
+To reduce LINK consumption when calling Chainlink's VRF, the results are stored, but no logic is applied.
 
-# Improving ideas for this project
-- Reduce Chainlink's gas consumption when calling `fulfillRandomWords`. Just store the array of randomWords with the requestId and the state of the request. The users can mint their elements after.
+The logic can then be applied manually by the user, to avoid extra token consumption or callback revert, causing the caller to lose funds.
 
 
 # Foundry Doc

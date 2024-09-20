@@ -88,6 +88,10 @@ contract PeriodicElementsCollectionTest is Test {
         VRFCoordinatorV2_5Mock(vrfCoordinator).fulfillRandomWords(1, address(pec));
     }
 
+    function testFulfillMintCardCanOnlyBeCalledAfterFulfillRandomWords() public {
+        // TODO @audit
+    }
+
     function testRandomness() public fundSubscriptionMax {
         uint256 numOfUsers = 1000;
 
@@ -102,6 +106,8 @@ contract PeriodicElementsCollectionTest is Test {
             //can call the fulfillRandomWords function
             vm.prank(address(vrfCoordinator));
             vrfCoordinator.fulfillRandomWords(requestId, address(pec));
+            vm.prank(user);
+            pec.fulfillMintCard(requestId);
         }
 
         //Calling the total supply function on all tokenIDs
@@ -128,6 +134,8 @@ contract PeriodicElementsCollectionTest is Test {
 
             vm.prank(address(vrfCoordinator));
             vrfCoordinator.fulfillRandomWords(requestId, address(pec));
+            vm.prank(user);
+            pec.fulfillMintCard(requestId);
 
             assertEq(totalMintedElements + 5, pec.totalSupply());
             totalMintedElements = pec.totalSupply();
@@ -148,6 +156,8 @@ contract PeriodicElementsCollectionTest is Test {
 
         vm.prank(address(vrfCoordinator));
         vrfCoordinator.fulfillRandomWords(requestId, address(pec));
+        vm.prank(user);
+        pec.fulfillMintCard(requestId);
 
         assertEq(pec.ELEMENTS_IN_PACK() * nbPacksToMints, pec.totalSupply());
     }
@@ -162,6 +172,8 @@ contract PeriodicElementsCollectionTest is Test {
 
         vm.prank(address(vrfCoordinator));
         vrfCoordinator.fulfillRandomWords(requestId, address(pec));
+        vm.prank(user);
+        pec.fulfillMintCard(requestId);
 
         assertEq(pec.NUM_MAX_ELEMENTS_MINTED_AT_ONCE(), pec.totalSupply(), "Not correct amount of elements minted");
 
@@ -190,6 +202,8 @@ contract PeriodicElementsCollectionTest is Test {
 
         vm.prank(address(vrfCoordinator));
         vrfCoordinator.fulfillRandomWords(requestId, address(pec));
+        vm.prank(user);
+        pec.fulfillMintCard(requestId);
 
         // LVL 1 elements are not the only ones minted
         assertLt(pec.totalSupply(1) + pec.totalSupply(2) + pec.totalSupply(10_001) + pec.totalSupply(10_002), 5);
