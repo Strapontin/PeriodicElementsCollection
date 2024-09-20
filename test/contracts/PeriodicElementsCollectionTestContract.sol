@@ -31,4 +31,9 @@ contract PeriodicElementsCollectionTestContract is PeriodicElementsCollection {
             setUserElementBurnedTimes(msg.sender, i, burnedTimesNeeded);
         }
     }
+
+    function fulfillRandomWords(uint256 requestId, uint256[] calldata randomWords) internal override {
+        // pre-logic to implement for tests
+        _fulfillRandomWords(requestId, randomWords);
+    }
 }

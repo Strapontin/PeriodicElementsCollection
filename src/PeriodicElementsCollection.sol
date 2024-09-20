@@ -109,7 +109,12 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
         emit MintRequestInitalized(requestId, msg.sender);
     }
 
-    function fulfillRandomWords(uint256 requestId, uint256[] calldata randomWords) internal override {
+    function fulfillRandomWords(uint256 requestId, uint256[] calldata randomWords) internal virtual override {
+        _fulfillRandomWords(requestId, randomWords);
+    }
+
+    // TODO : maybe change the name for the function ?
+    function _fulfillRandomWords(uint256 requestId, uint256[] memory randomWords) internal {
         address accountMinting = requestIdToMinter[requestId];
 
         uint256[] memory ids = new uint256[](randomWords.length);

@@ -177,7 +177,7 @@ contract PeriodicElementsCollectionTest is Test {
         }
     }
 
-    function testUserCanMintElementsUnderHisLevel() public fundSubscriptionMax setAllEllementsArtificialRamEqual {
+    function testUserCanMintElementsUnderTheirLevel() public fundSubscriptionMax setAllEllementsArtificialRamEqual {
         vm.warp(block.timestamp + 25 hours);
 
         uint256 levelToSet = 1;
@@ -193,5 +193,9 @@ contract PeriodicElementsCollectionTest is Test {
 
         // LVL 1 elements are not the only ones minted
         assertLt(pec.totalSupply(1) + pec.totalSupply(2) + pec.totalSupply(10_001) + pec.totalSupply(10_002), 5);
+    }
+
+    function testUserCanMintAntimatterUnderTheirLevel() public fundSubscriptionMax setAllEllementsArtificialRamEqual {
+        // wip
     }
 }
