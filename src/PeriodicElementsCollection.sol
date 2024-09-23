@@ -18,8 +18,9 @@ import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/V
 /// "strapontin" on discord
 /// https://x.com/0xStrapontin on X
 contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, ElementsData {
-    error PEC_NoPackToMint();
-    error PEC_EthNotSend();
+    error PEC__NoPackToMint();
+    error PEC__EthNotSend();
+    error PEC__VRFNeedCallbackNotReceived();
 
     enum VRFStatus {
         None,
@@ -82,7 +83,7 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
         uint256 numOfFreePacksAvailable = (startOfTheDay / 1 days) - (lastFreeMint / 1 days);
 
         // If no free packs available and not enough ether send, revert
-        if (numOfFreePacksAvailable == 0 && msg.value < mintPackPrice) revert PEC_NoPackToMint();
+        if (numOfFreePacksAvailable == 0 && msg.value < mintPackPrice) revert PEC__NoPackToMint();
 
         lastFreeMintFromUsers[msg.sender] = block.timestamp;
 
@@ -117,7 +118,7 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
         uint256 leftOverEth = msg.value - (mintPackPrice * numOfPaidPacksToMint);
         if (leftOverEth != 0) {
             (bool sent,) = address(msg.sender).call{value: leftOverEth}("");
-            if (!sent) revert PEC_EthNotSend();
+            if (!sent) revert PEC__EthNotSend();
         }
 
         emit MintRequestInitalized(requestId, msg.sender);
@@ -137,6 +138,7 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
 
     function fulfillMintCard(uint256 requestId) public {
         VRFState memory vrfState = requestIdToVRFState[requestId];
+        if (vrfState.status != VRFStatus.ReadyToMint) revert PEC__VRFNeedCallbackNotReceived();
 
         uint256[] memory ids = new uint256[](vrfState.randomWords.length);
         uint256[] memory values = new uint256[](vrfState.randomWords.length);

@@ -25,7 +25,9 @@ Elements minted are random using chainlink. Elements minted cannot be higher tha
 
 The randomness of the minted element depends on available elements (user level) and the relative element atomic mass (higher atomic mass has less chances to be picked).
 
-For every element minted, there is a 1/10_000 chances to mint an antimatter element. The same rules (regarding levels) apply here.
+For every element minted, there is 1/10_007 chances to mint an antimatter element. The same rules (regarding levels) apply here. 
+
+> Note that 10_007 is chosen here as a prime number, as a non-prime number may in some cases not provide antimatter for every elements.
 
 Allows minting of multiple packs, given the amount of eth transfered.
 
@@ -53,7 +55,7 @@ $DMTs are used as fee for transferring elements.
 *Users could also use them for minting paid packs, instead of ETH* (this is to be thought of)
 
 ### Antimatter
-Antimatter is a rarer version of matter. Minting an element may result in an antimatter element minted with a 1/10_000% chance. 
+Antimatter is a rarer version of matter. Minting an element may result in an antimatter element minted with a 1/10_007% chance. 
 
 The rest of the antimatter collection works the same as for the matter collection, with a parallel level system (updating matter level doesn't change antimatter level; can't mint lvl 2 antimatter if antimatter level == 1, even if matter level > 1).
 

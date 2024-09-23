@@ -47,9 +47,9 @@ contract ElementsData {
                     result[rngIndex] = elementsUnlocked[i];
 
                     // 1/10k chances to be antimatter
-                    if (randomWords[rngIndex] % 10_000 == 0) {
+                    if (randomWords[rngIndex] % 10_007 == 0) {
                         console.log("ANTIMATTER");
-                        result[rngIndex] += 10_000;
+                        result[rngIndex] += 10_007;
                     }
 
                     break;

@@ -1,62 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {PeriodicElementsCollection} from "../src/PeriodicElementsCollection.sol";
-import {DarkMatterTokens} from "../src/DarkMatterTokens.sol";
-import {ElementsData} from "../src/ElementsData.sol";
-import {HelperConfig} from "../script/HelperConfig.s.sol";
-import {PeriodicElementsCollectionDeployer} from "../script/PeriodicElementsCollectionDeployer.s.sol";
-import {PeriodicElementsCollectionTestContract} from "./contracts/PeriodicElementsCollectionTestContract.sol";
+import {PeriodicElementsCollection} from "src/PeriodicElementsCollection.sol";
+import {DarkMatterTokens} from "src/DarkMatterTokens.sol";
+import {ElementsData} from "src/ElementsData.sol";
+import {HelperConfig} from "script/HelperConfig.s.sol";
+import {PeriodicElementsCollectionDeployer} from "script/PeriodicElementsCollectionDeployer.s.sol";
+import {PeriodicElementsCollectionTestContract} from "test/contracts/PeriodicElementsCollectionTestContract.sol";
 
 import {Test, console} from "forge-std/Test.sol";
 import {VRFCoordinatorV2_5Mock} from "@chainlink/contracts/src/v0.8/vrf/mocks/VRFCoordinatorV2_5Mock.sol";
-import {FundSubscription} from "../script/VRFInteractions.s.sol";
+import {FundSubscription} from "script/VRFInteractions.s.sol";
+import {PeriodicElementsCollectionBaseTest} from "../PeriodicElementsCollectionBaseTest.t.sol";
 
-contract PeriodicElementsCollectionTest is Test {
-    PeriodicElementsCollectionTestContract pec;
-    HelperConfig helperConfig;
-    HelperConfig.NetworkConfig config;
-
-    address owner;
-    address user = makeAddr("user");
-
-    VRFCoordinatorV2_5Mock vrfCoordinator;
-    FundSubscription fundSubscription;
-
-    function setUp() public {
-        address periodicElementsCollectionTestContract;
-        (periodicElementsCollectionTestContract, helperConfig) =
-            (new PeriodicElementsCollectionDeployer()).deployContract();
-        pec = PeriodicElementsCollectionTestContract(periodicElementsCollectionTestContract);
-
-        fundSubscription = new FundSubscription();
-
-        config = helperConfig.getConfig();
-        config.subscriptionId = pec.subscriptionId();
-
-        vrfCoordinator = VRFCoordinatorV2_5Mock(config.vrfCoordinator);
-
-        assert(address(pec) != address(0));
-        assertEq(config.account, pec.owner());
-    }
-
-    function testIsAlive() public view {
-        assertEq("Periodic Elements Collection", pec.name());
-        (uint256 number, string memory name, string memory symbol, uint256 ram, uint256 level) = pec.elementsData(1);
-
-        assertEq(1, number);
-        assertEq("Hydrogen", name);
-        assertEq("H", symbol);
-        assertEq(1.008 * 1_000, ram);
-        assertEq(1, level);
-
-        uint256 expectedRAM = 1e18 / ram;
-        assertEq(expectedRAM, pec.getElementArtificialRAMWeight(1));
-    }
-
-    /**
-     * VRF tests
-     */
+contract PeriodicElementsCollectionMintTest is PeriodicElementsCollectionBaseTest {
     modifier fundSubscriptionMax() {
         fundSubscription.fundSubscription(config, type(uint256).max - 3 ether);
         _;
@@ -67,19 +24,6 @@ contract PeriodicElementsCollectionTest is Test {
         _;
     }
 
-    function testElementsLevelIsCorrect() public view {
-        for (uint256 lvl = 1; lvl <= 7; lvl++) {
-            uint256[] memory lvlElements = pec.getElementsUnlockedUnderLevel(lvl);
-
-            assertEq(
-                lvlElements.length,
-                lvl == 0
-                    ? 2
-                    : lvl == 1 ? 10 : lvl == 2 ? 18 : lvl == 3 ? 36 : lvl == 4 ? 54 : lvl == 5 ? 86 : lvl == 6 ? 118 : 0
-            );
-        }
-    }
-
     function testFulfillRandomWordsCanOnlyBeCalledAfterRequestId() public {
         vm.expectRevert(VRFCoordinatorV2_5Mock.InvalidRequest.selector);
         VRFCoordinatorV2_5Mock(vrfCoordinator).fulfillRandomWords(0, address(pec));
@@ -88,14 +32,26 @@ contract PeriodicElementsCollectionTest is Test {
         VRFCoordinatorV2_5Mock(vrfCoordinator).fulfillRandomWords(1, address(pec));
     }
 
-    function testFulfillMintCardCanOnlyBeCalledAfterFulfillRandomWords() public {
-        // TODO @audit
+    function testFulfillMintCardCanOnlyBeCalledAfterFulfillRandomWords() public fundSubscriptionMax {
+        vm.warp(block.timestamp + 24 hours);
+
+        vm.prank(user);
+        uint256 requestId = pec.mintPack();
+
+        vm.expectRevert(PeriodicElementsCollection.PEC__VRFNeedCallbackNotReceived.selector);
+        pec.fulfillMintCard(requestId);
+
+        vm.prank(address(vrfCoordinator));
+        vrfCoordinator.fulfillRandomWords(requestId, address(pec));
+        pec.fulfillMintCard(requestId);
+
+        assertNotEq(0, pec.totalSupply());
     }
 
     function testRandomness() public fundSubscriptionMax {
         uint256 numOfUsers = 1000;
 
-        vm.warp(block.timestamp + 25 hours);
+        vm.warp(block.timestamp + 24 hours);
 
         for (uint256 i = 1; i <= numOfUsers; i++) {
             vm.prank(address(bytes20(uint160(i))));
@@ -120,6 +76,12 @@ contract PeriodicElementsCollectionTest is Test {
         console.log("Supply of antimatter tokenId 2 =", pec.totalSupply(10_002));
     }
 
+    function testUserCantMintIfNoPackToMintAndNoPayement() public fundSubscriptionMax {
+        vm.prank(user);
+        vm.expectRevert(PeriodicElementsCollection.PEC__NoPackToMint.selector);
+        pec.mintPack();
+    }
+
     function testUserCanMintOneFreePackPerDay() public fundSubscriptionMax {
         uint256 totalMintedElements = 0;
         vm.warp(block.timestamp + 12 hours);
@@ -142,6 +104,19 @@ contract PeriodicElementsCollectionTest is Test {
         assertEq(500, totalMintedElements);
         assertEq(500, pec.totalSupply(1) + pec.totalSupply(2));
         assertEq(500, pec.balanceOf(user, 1) + pec.balanceOf(user, 2));
+    }
+
+    function testUserCanMintMax7FreePacks() public fundSubscriptionMax {
+        vm.warp(block.timestamp + 50 weeks);
+
+        vm.prank(user);
+        uint256 requestId = pec.mintPack();
+
+        vm.prank(address(vrfCoordinator));
+        vrfCoordinator.fulfillRandomWords(requestId, address(pec));
+        pec.fulfillMintCard(requestId);
+
+        assertEq(7 * 5, pec.totalSupply());
     }
 
     function testUserCanMintMorePacksIfPayCorrectAmount(uint256 nbPacksToMints) public fundSubscriptionMax {
@@ -188,7 +163,7 @@ contract PeriodicElementsCollectionTest is Test {
         // Forces level to be up to 7 (0 indexed so - 1)
         levelToSet = bound(levelToSet, 0, 6);
 
-        uint NUM_TOTAL_ELEMENTS_TO_MINT = 120;
+        uint256 NUM_TOTAL_ELEMENTS_TO_MINT = 120;
 
         uint256 mintAllValue = NUM_TOTAL_ELEMENTS_TO_MINT * pec.mintPackPrice() / pec.ELEMENTS_IN_PACK();
         vm.deal(user, mintAllValue * 14);
@@ -196,11 +171,9 @@ contract PeriodicElementsCollectionTest is Test {
         uint256 requestId = 0;
 
         uint256[] memory randomWords = new uint256[](NUM_TOTAL_ELEMENTS_TO_MINT);
-        uint256[] memory randomWordsAntimatter = new uint256[](NUM_TOTAL_ELEMENTS_TO_MINT);
 
         for (uint256 i = 0; i < NUM_TOTAL_ELEMENTS_TO_MINT; i++) {
             randomWords[i] = i + 1; // + 1 is to avoid minting antimatter
-            randomWordsAntimatter[i] = i + 10_000;
         }
 
         pec.setAllEllementsArtificialRamEqual();
