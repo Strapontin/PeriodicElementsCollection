@@ -47,10 +47,10 @@ contract PeriodicElementsCollectionTest is Test {
         assertEq(1, number);
         assertEq("Hydrogen", name);
         assertEq("H", symbol);
-        assertEq(1.008 * 1e18, ram);
+        assertEq(1.008 * 1_000, ram);
         assertEq(1, level);
 
-        uint256 expectedRAM = 1e22 / ram;
+        uint256 expectedRAM = 1e18 / ram;
         assertEq(expectedRAM, pec.getElementArtificialRAMWeight(1));
     }
 
@@ -106,7 +106,6 @@ contract PeriodicElementsCollectionTest is Test {
             //can call the fulfillRandomWords function
             vm.prank(address(vrfCoordinator));
             vrfCoordinator.fulfillRandomWords(requestId, address(pec));
-            vm.prank(user);
             pec.fulfillMintCard(requestId);
         }
 
@@ -134,7 +133,6 @@ contract PeriodicElementsCollectionTest is Test {
 
             vm.prank(address(vrfCoordinator));
             vrfCoordinator.fulfillRandomWords(requestId, address(pec));
-            vm.prank(user);
             pec.fulfillMintCard(requestId);
 
             assertEq(totalMintedElements + 5, pec.totalSupply());
@@ -156,7 +154,6 @@ contract PeriodicElementsCollectionTest is Test {
 
         vm.prank(address(vrfCoordinator));
         vrfCoordinator.fulfillRandomWords(requestId, address(pec));
-        vm.prank(user);
         pec.fulfillMintCard(requestId);
 
         assertEq(pec.ELEMENTS_IN_PACK() * nbPacksToMints, pec.totalSupply());
@@ -172,7 +169,6 @@ contract PeriodicElementsCollectionTest is Test {
 
         vm.prank(address(vrfCoordinator));
         vrfCoordinator.fulfillRandomWords(requestId, address(pec));
-        vm.prank(user);
         pec.fulfillMintCard(requestId);
 
         assertEq(pec.NUM_MAX_ELEMENTS_MINTED_AT_ONCE(), pec.totalSupply(), "Not correct amount of elements minted");
@@ -181,35 +177,58 @@ contract PeriodicElementsCollectionTest is Test {
         assertEq(expectedRefund, user.balance, "User should be refunded correct amount");
     }
 
+    // Test to be sure that the modifier works as expected
     function testSetAllEllementsArtificialRamEqual() public setAllEllementsArtificialRamEqual {
-        uint256 hydrogenArtificialRam = pec.getElementArtificialRAMWeight(1);
-
         for (uint256 i = 2; i <= 118; i++) {
-            assertEq(hydrogenArtificialRam, pec.getElementArtificialRAMWeight(i));
+            assertEq(1, pec.getElementArtificialRAMWeight(i));
         }
     }
 
-    function testUserCanMintElementsUnderTheirLevel() public fundSubscriptionMax setAllEllementsArtificialRamEqual {
-        vm.warp(block.timestamp + 25 hours);
+    function testFuzzUserCanMintElementsUnderTheirLevel(uint256 levelToSet) public fundSubscriptionMax {
+        // Forces level to be up to 7 (0 indexed so - 1)
+        levelToSet = bound(levelToSet, 0, 6);
 
-        uint256 levelToSet = 1;
+        uint NUM_TOTAL_ELEMENTS_TO_MINT = 120;
+
+        uint256 mintAllValue = NUM_TOTAL_ELEMENTS_TO_MINT * pec.mintPackPrice() / pec.ELEMENTS_IN_PACK();
+        vm.deal(user, mintAllValue * 14);
+
+        uint256 requestId = 0;
+
+        uint256[] memory randomWords = new uint256[](NUM_TOTAL_ELEMENTS_TO_MINT);
+        uint256[] memory randomWordsAntimatter = new uint256[](NUM_TOTAL_ELEMENTS_TO_MINT);
+
+        for (uint256 i = 0; i < NUM_TOTAL_ELEMENTS_TO_MINT; i++) {
+            randomWords[i] = i + 1; // + 1 is to avoid minting antimatter
+            randomWordsAntimatter[i] = i + 10_000;
+        }
+
+        pec.setAllEllementsArtificialRamEqual();
+
         pec.setUserLevel(user, levelToSet);
         assertEq(levelToSet, pec.getUserLevel(user));
 
+        // Set values of elements to be minted
+        pec.setPredefinedRandomWords(requestId + 1, randomWords);
+
         // Mints elements
         vm.prank(user);
-        uint256 requestId = pec.mintPack();
-
+        requestId = pec.mintPack{value: mintAllValue}();
         vm.prank(address(vrfCoordinator));
         vrfCoordinator.fulfillRandomWords(requestId, address(pec));
-        vm.prank(user);
         pec.fulfillMintCard(requestId);
 
-        // LVL 1 elements are not the only ones minted
-        assertLt(pec.totalSupply(1) + pec.totalSupply(2) + pec.totalSupply(10_001) + pec.totalSupply(10_002), 5);
-    }
+        uint256[] memory elementsUnlocked = pec.getElementsUnlockedByPlayer(user);
+        uint256 countElementsUnlocked = 0;
+        uint256 averageMintingCount = NUM_TOTAL_ELEMENTS_TO_MINT / elementsUnlocked.length;
 
-    function testUserCanMintAntimatterUnderTheirLevel() public fundSubscriptionMax setAllEllementsArtificialRamEqual {
-        // wip
+        for (uint256 i = 0; i < elementsUnlocked.length; i++) {
+            uint256 totalSupplyThisElement = pec.totalSupply(elementsUnlocked[i]);
+            assert(totalSupplyThisElement - averageMintingCount <= 1); // Assert that we minted an average amount of the element or max + 1
+
+            countElementsUnlocked += totalSupplyThisElement;
+        }
+
+        assertEq(NUM_TOTAL_ELEMENTS_TO_MINT, countElementsUnlocked);
     }
 }

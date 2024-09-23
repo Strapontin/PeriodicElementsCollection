@@ -28,38 +28,61 @@ contract ElementsData {
         }
     }
 
-    function pickRandomElementAvailable(address user, uint256 randomWord) internal view returns (uint256) {
-        uint256 userLevel = usersLevel[user];
-        uint256[] memory elementsUnlocked = elementsUnlockedUnderLevel[userLevel];
-        uint256 availableElementsLength = elementsUnlocked.length;
+    function pickRandomElementAvailable(address user, uint256[] memory randomWords)
+        internal
+        view
+        returns (uint256[] memory result)
+    {
+        result = new uint256[](randomWords.length);
+        (uint256[] memory weights, uint256 totalWeight, uint256[] memory elementsUnlocked) = getRealUserWeights(user);
 
-        uint256[] memory weights = new uint256[](availableElementsLength);
-        uint256 totalWeight = 0;
+        for (uint256 rngIndex = 0; rngIndex < randomWords.length; rngIndex++) {
+            uint256 random = randomWords[rngIndex] % totalWeight;
 
-        for (uint256 i = 0; i < availableElementsLength; i++) {
-            weights[i] = getElementArtificialRAMWeight(elementsUnlocked[i]);
-            totalWeight += weights[i];
-        }
+            uint256 cumulativeWeight = 0;
+            for (uint256 i = 0; i < elementsUnlocked.length; i++) {
+                cumulativeWeight += weights[i];
 
-        uint256 random = randomWord % totalWeight;
+                if (cumulativeWeight > random) {
+                    result[rngIndex] = elementsUnlocked[i];
 
-        uint256 cumulativeWeight = 0;
-        for (uint256 i = 0; i < elementsUnlocked.length; i++) {
-            cumulativeWeight += weights[i];
-            if (random < cumulativeWeight) {
-                return elementsUnlocked[i];
+                    // 1/10k chances to be antimatter
+                    if (randomWords[rngIndex] % 10_000 == 0) {
+                        console.log("ANTIMATTER");
+                        result[rngIndex] += 10_000;
+                    }
+
+                    break;
+                }
             }
         }
+    }
 
-        // This should not be reached; return the last element as a fallback
-        return elementsUnlocked[elementsUnlocked.length - 1];
+    function getRealUserWeights(address user)
+        public
+        view
+        returns (uint256[] memory elementsWeight, uint256 totalWeight, uint256[] memory elementsUnlocked)
+    {
+        elementsUnlocked = getElementsUnlockedByPlayer(user);
+        uint256 availableElementsLength = elementsUnlocked.length;
+
+        elementsWeight = new uint256[](availableElementsLength);
+
+        for (uint256 i = 0; i < availableElementsLength; i++) {
+            elementsWeight[i] = getElementArtificialRAMWeight(elementsUnlocked[i]);
+            totalWeight += elementsWeight[i];
+        }
+    }
+
+    function getElementsUnlockedByPlayer(address user) public view returns (uint256[] memory) {
+        return elementsUnlockedUnderLevel[usersLevel[user]];
     }
 
     function getElementArtificialRAMWeight(uint256 elementNumber) public view returns (uint256 artificialRAM) {
         uint256 elementBaseRAM = elementsData[elementNumber].initialRAM;
         uint256 numBurnedTimes = burnedTimes[msg.sender][elementNumber];
 
-        // 1e22 allows the heaviest burnable element (Radon) to be burned (10_000 - 222) times
-        artificialRAM = 1e22 / (elementBaseRAM + (numBurnedTimes * 1e18));
+        // elementBaseRAM is set in deployer
+        artificialRAM = 1e18 / (elementBaseRAM + (numBurnedTimes * 1_000));
     }
 }

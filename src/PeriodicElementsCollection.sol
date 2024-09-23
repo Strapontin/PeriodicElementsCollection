@@ -36,7 +36,7 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
 
     string public constant name = "Periodic Elements Collection";
     uint256 public constant ELEMENTS_IN_PACK = 5;
-    uint256 public constant NUM_MAX_ELEMENTS_MINTED_AT_ONCE = 100;
+    uint256 public constant NUM_MAX_ELEMENTS_MINTED_AT_ONCE = 250;
 
     mapping(uint256 => VRFState) public requestIdToVRFState;
 
@@ -127,11 +127,12 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
         storeRandomnessResult(requestId, randomWords);
     }
 
-    // TODO : maybe change the name for the function ?
+    // Can the gas be reduced even more ?
     function storeRandomnessResult(uint256 requestId, uint256[] memory randomWords) internal {
         for (uint256 i = 0; i < randomWords.length; i++) {
             requestIdToVRFState[requestId].randomWords.push(randomWords[i]);
         }
+        requestIdToVRFState[requestId].status = VRFStatus.ReadyToMint;
     }
 
     function fulfillMintCard(uint256 requestId) public {
@@ -142,20 +143,13 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
         uint256 uniqueTokenCount = 0;
 
         // Process each randomWord to determine the tokenId and its quantity
-        for (uint256 wordsId = 0; wordsId < vrfState.randomWords.length; wordsId++) {
-            uint256 tokenId = pickRandomElementAvailable(vrfState.minterAddress, vrfState.randomWords[wordsId]);
+        uint256[] memory tokenIds = pickRandomElementAvailable(vrfState.minterAddress, vrfState.randomWords);
 
-            unchecked {
-                if (vrfState.randomWords[wordsId] % 10_000 == 0) {
-                    // This is an antimatter element
-                    tokenId += 10_000;
-                }
-            }
-
+        for (uint256 tokenIndex = 0; tokenIndex < tokenIds.length; tokenIndex++) {
             // Check if this tokenId already exists in ids array
             bool tokenFound = false;
             for (uint256 i = 0; i < uniqueTokenCount; i++) {
-                if (ids[i] == tokenId) {
+                if (ids[i] == tokenIds[tokenIndex]) {
                     unchecked {
                         values[i]++; // Increase the count for this token
                     }
@@ -166,7 +160,7 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
 
             // If tokenId is not found, add it as a new unique token
             if (!tokenFound) {
-                ids[uniqueTokenCount] = tokenId;
+                ids[uniqueTokenCount] = tokenIds[tokenIndex];
                 values[uniqueTokenCount] = 1;
                 unchecked {
                     uniqueTokenCount++;

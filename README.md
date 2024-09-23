@@ -43,6 +43,7 @@ This fee is collected via DarkMatterTokens.
 Users can burn their elements to decrease the chances they have to mint them. The more an element is burned this way, the less chances the user has to mint this element.
 
 Elements can't be burned if they belong to the max level unlocked by the user.
+This means that elements from level 7 are never going to be burnable this way. This is intended.
 
 ### Buying DarkMatterTokens ($DMT)
 $DMTs are the main currency of the game. 1 ETH = 1 DMT. 5% of ETH used to buy DMT goes straight to the owner (if not address(0)), while the rest goes to the prize pool.
