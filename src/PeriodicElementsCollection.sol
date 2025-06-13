@@ -68,15 +68,13 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
         darkMatterTokens = new DarkMatterTokens();
     }
 
-    function setURI(string memory newuri) public onlyOwner {
-        _setURI(newuri);
-    }
+    // function setURI(string memory newuri) public onlyOwner {
+    //     _setURI(newuri);
+    // }
 
     function mintPack() public payable returns (uint256 requestId) {
-        uint256 freePacksMinted = _mintFreePacks(msg.sender);
-
         // If no free packs available and not enough ether send, revert
-        if (freePacksMinted == 0 && msg.value < PACK_PRICE) revert PEC__NoPackToMint();
+        if (msg.value < PACK_PRICE) revert PEC__NoPackToMint();
 
         uint256 numPacksPaid = msg.value / PACK_PRICE;
         uint32 numWordsToRequest = uint32(numPacksPaid * ELEMENTS_IN_PACK);
@@ -144,7 +142,7 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
         requestIdToVRFState[requestId].status = VRFStatus.ReadyToMint;
     }
 
-    function fulfillMintCard(uint256 requestId) public {
+    function unpackRandomMatter(uint256 requestId) external {
         VRFState memory vrfState = requestIdToVRFState[requestId];
 
         if (vrfState.status == VRFStatus.PendingVRFCallback) revert PEC__VRFNeedCallbackNotReceived();

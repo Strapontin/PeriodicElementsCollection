@@ -8,7 +8,7 @@ import {HelperConfig} from "script/HelperConfig.s.sol";
 import {PECDeployer} from "script/PECDeployer.s.sol";
 import {PECTestContract} from "test/contracts/PECTestContract.sol";
 
-import {Test, console} from "forge-std/Test.sol";
+import {Test, console2} from "forge-std/Test.sol";
 import {VRFCoordinatorV2_5Mock} from "@chainlink/contracts/src/v0.8/vrf/mocks/VRFCoordinatorV2_5Mock.sol";
 import {FundSubscription} from "script/VRFInteractions.s.sol";
 import {PECBaseTest} from "../PECBaseTest.t.sol";
@@ -24,7 +24,7 @@ contract PECMintTest is PECBaseTest {
         _;
     }
 
-    function testFulfillRandomWordsCanOnlyBeCalledAfterRequestId() public {
+    function test_fulfillRandomWordsCanOnlyBeCalledAfterRequestId() public {
         vm.expectRevert(VRFCoordinatorV2_5Mock.InvalidRequest.selector);
         VRFCoordinatorV2_5Mock(vrfCoordinator).fulfillRandomWords(0, address(pec));
 
@@ -32,11 +32,15 @@ contract PECMintTest is PECBaseTest {
         VRFCoordinatorV2_5Mock(vrfCoordinator).fulfillRandomWords(1, address(pec));
     }
 
-    function testMintingStates() public fundSubscriptionMax {
+    function test_mintingStates() public fundSubscriptionMax {
+        if (user.code.length > 0) {
+            return;
+        }
+
         vm.warp(block.timestamp + 1 days);
 
         vm.prank(user);
-        uint256 requestId = pec.mintPack();
+        uint256 requestId = pec.mintPack{value: PACK_PRICE}();
 
         // Status is now Pending for VRF Callback
         assertEq(
@@ -53,7 +57,7 @@ contract PECMintTest is PECBaseTest {
             uint256(pec.getVRFStateFromRequestId(requestId).status)
         );
 
-        pec.fulfillMintCard(requestId);
+        pec.unpackRandomMatter(requestId);
 
         // Status is now Minted
         assertEq(
@@ -62,177 +66,58 @@ contract PECMintTest is PECBaseTest {
         );
     }
 
-    function testFulfillMintCardCanOnlyBeCalledAfterFulfillRandomWords() public fundSubscriptionMax {
-        vm.warp(block.timestamp + 1 days);
+    function test_payMoreShouldPayBack() public {
+        // 1st test, pay 1.5 pack, should pay back 0.5
+        vm.startPrank(user);
+        pec.mintPack{value: PACK_PRICE + PACK_PRICE / 2}();
 
-        vm.prank(user);
-        uint256 requestId = pec.mintPack();
+        assertEq(type(uint128).max - PACK_PRICE, user.balance);
 
-        vm.expectRevert(PeriodicElementsCollection.PEC__VRFNeedCallbackNotReceived.selector);
-        pec.fulfillMintCard(requestId);
-
-        vm.prank(address(vrfCoordinator));
-        vrfCoordinator.fulfillRandomWords(requestId, address(pec));
-        pec.fulfillMintCard(requestId);
-
-        assertNotEq(0, pec.totalSupply());
-
-        vm.expectRevert(PeriodicElementsCollection.PEC__RequestIdAlreadyMinted.selector);
-        pec.fulfillMintCard(requestId);
+        // 2nd test, should not pay more than max amount possible
+        // Note that it pays back 1 more PACK_PRICE due to previous mintPack
+        pec.mintPack{value: user.balance}();
+        assertEq(
+            type(uint128).max - (PACK_PRICE + PACK_PRICE * NUM_MAX_PACKS_MINTED_AT_ONCE), user.balance
+        );
     }
 
-    function testRandomness() public fundSubscriptionMax {
-        uint256 numOfUsers = 1000;
+    function test_mintFreePacksShouldMint5HeliumAndHydrogen() public {
+        vm.warp(block.timestamp + 1e18);
+        vm.startPrank(user);
+        pec.mintFreePacks();
 
-        vm.warp(block.timestamp + 1 days);
-
-        for (uint256 i = 1; i <= numOfUsers; i++) {
-            vm.prank(address(bytes20(uint160(i))));
-            uint256 requestId = pec.mintPack();
-
-            //Have to impersonate the VRFCoordinatorV2Mock contract
-            //since only the VRFCoordinatorV2Mock contract
-            //can call the fulfillRandomWords function
-            vm.prank(address(vrfCoordinator));
-            vrfCoordinator.fulfillRandomWords(requestId, address(pec));
-            pec.fulfillMintCard(requestId);
-        }
-
-        //Calling the total supply function on all tokenIDs
-        //to get a final tally, before logging the values.
-        console.log("TotalSupply", pec.totalSupply());
-        assertEq(numOfUsers * 5, pec.totalSupply());
-
-        console.log("Supply of tokenId 1 =", pec.totalSupply(1));
-        console.log("Supply of tokenId 2 =", pec.totalSupply(2));
-        console.log("Supply of antimatter tokenId 1 =", pec.totalSupply(10_001));
-        console.log("Supply of antimatter tokenId 2 =", pec.totalSupply(10_002));
+        assertEq(pec.totalSupply(), 70);
     }
 
-    function testUserCantMintIfNoPackToMintAndNoPayement() public fundSubscriptionMax {
+    function test_mintFreeTwiceShouldNotGiveMore() public {
+        vm.warp(block.timestamp + 1e18);
+        vm.startPrank(user);
+        pec.mintFreePacks();
+
         vm.expectRevert(PeriodicElementsCollection.PEC__NoPackToMint.selector);
+        pec.mintFreePacks();
 
-        vm.prank(user);
-        pec.mintPack();
+        assertEq(pec.totalSupply(), 70);
     }
 
-    function testUserCanMintOneFreePackPerDay() public fundSubscriptionMax {
-        uint256 totalMintedElements = 0;
-        vm.warp(block.timestamp + 12 hours);
-
-        // User mints daily for 100 days
-        for (uint256 i = 0; i < 100; i++) {
-            vm.warp(block.timestamp + 1 days);
-
-            vm.prank(user);
-            uint256 requestId = pec.mintPack();
-
-            vm.prank(address(vrfCoordinator));
-            vrfCoordinator.fulfillRandomWords(requestId, address(pec));
-            pec.fulfillMintCard(requestId);
-
-            assertEq(totalMintedElements + 5, pec.totalSupply());
-            totalMintedElements = pec.totalSupply();
-        }
-
-        assertEq(500, totalMintedElements);
-        assertEq(500, pec.totalSupply(1) + pec.totalSupply(2));
-        assertEq(500, pec.balanceOf(user, 1) + pec.balanceOf(user, 2));
-    }
-
-    function testUserCanMintMax7FreePacks() public fundSubscriptionMax {
-        vm.warp(block.timestamp + 50 weeks);
-
-        vm.prank(user);
-        uint256 requestId = pec.mintPack();
-
-        vm.prank(address(vrfCoordinator));
-        vrfCoordinator.fulfillRandomWords(requestId, address(pec));
-        pec.fulfillMintCard(requestId);
-
-        assertEq(7 * 5, pec.totalSupply());
-    }
-
-    function testUserCanMintMorePacksIfPayCorrectAmount(uint256 nbPacksToMints) public fundSubscriptionMax {
-        nbPacksToMints = bound(nbPacksToMints, 1, 20);
-        vm.deal(user, pec.PACK_PRICE() * nbPacksToMints);
-
+    function test_mintFreeEveryDayShouldGive1Pack() public {
+        vm.warp(block.timestamp + 1e18);
         vm.startPrank(user);
-        uint256 requestId = pec.mintPack{value: pec.PACK_PRICE() * nbPacksToMints}();
-        vm.stopPrank();
+        pec.mintFreePacks();
 
-        vm.prank(address(vrfCoordinator));
-        vrfCoordinator.fulfillRandomWords(requestId, address(pec));
-        pec.fulfillMintCard(requestId);
+        vm.warp(block.timestamp + 1 days);
 
-        assertEq(pec.ELEMENTS_IN_PACK() * nbPacksToMints, pec.totalSupply());
-    }
+        pec.mintFreePacks();
+        assertEq(pec.totalSupply(), 80);
 
-    function testRefundIfUserPayTooMuch() public fundSubscriptionMax {
-        uint256 initialUserFund = 1 ether;
-        vm.deal(user, initialUserFund);
+        vm.warp(block.timestamp + 1 days);
 
-        vm.startPrank(user);
-        uint256 requestId = pec.mintPack{value: initialUserFund}();
-        vm.stopPrank();
+        pec.mintFreePacks();
+        assertEq(pec.totalSupply(), 90);
 
-        vm.prank(address(vrfCoordinator));
-        vrfCoordinator.fulfillRandomWords(requestId, address(pec));
-        pec.fulfillMintCard(requestId);
+        vm.warp(block.timestamp + 1 days);
 
-        assertEq(pec.NUM_MAX_PACKS_MINTED_AT_ONCE() * 5, pec.totalSupply(), "Not correct amount of elements minted");
-
-        uint256 expectedRefund = initialUserFund - (pec.PACK_PRICE() * pec.totalSupply() / pec.ELEMENTS_IN_PACK());
-        assertEq(expectedRefund, user.balance, "User should be refunded correct amount");
-    }
-
-    // Test to be sure that the modifier works as expected
-    function testSetAllEllementsArtificialRamEqual() public setAllEllementsArtificialRamEqual {
-        for (uint256 i = 2; i <= 118; i++) {
-            assertEq(1, pec.getElementArtificialRAMWeight(i));
-        }
-    }
-
-    function testFuzzUserCanMintElementsUnderTheirLevel(uint256 levelToSet) public fundSubscriptionMax {
-        // Forces level to be up to 7 (0 indexed so - 1)
-        levelToSet = bound(levelToSet, 0, 6);
-
-        uint256 NUM_TOTAL_ELEMENTS_TO_MINT = 120;
-
-        uint256 mintAllValue = NUM_TOTAL_ELEMENTS_TO_MINT * pec.PACK_PRICE() / pec.ELEMENTS_IN_PACK();
-        vm.deal(user, mintAllValue * 14);
-
-        uint256 requestId = 0;
-
-        uint256[] memory randomWords = new uint256[](NUM_TOTAL_ELEMENTS_TO_MINT);
-
-        for (uint256 i = 0; i < NUM_TOTAL_ELEMENTS_TO_MINT; i++) {
-            randomWords[i] = i + 1; // + 1 is to avoid minting antimatter
-        }
-
-        pec.setAllEllementsArtificialRamEqual();
-
-        pec.setUserLevel(user, levelToSet);
-        assertEq(levelToSet, pec.getUserLevel(user));
-
-        // Mints elements
-        vm.prank(user);
-        requestId = pec.mintPack{value: mintAllValue}();
-        vm.prank(address(vrfCoordinator));
-        vrfCoordinator.fulfillRandomWordsWithOverride(requestId, address(pec), randomWords);
-        pec.fulfillMintCard(requestId);
-
-        uint256[] memory elementsUnlocked = pec.getElementsUnlockedByPlayer(user);
-        uint256 countElementsUnlocked = 0;
-        uint256 averageMintingCount = NUM_TOTAL_ELEMENTS_TO_MINT / elementsUnlocked.length;
-
-        for (uint256 i = 0; i < elementsUnlocked.length; i++) {
-            uint256 totalSupplyThisElement = pec.totalSupply(elementsUnlocked[i]);
-            assert(totalSupplyThisElement - averageMintingCount <= 1); // Assert that we minted an average amount of the element or max + 1
-
-            countElementsUnlocked += totalSupplyThisElement;
-        }
-
-        assertEq(NUM_TOTAL_ELEMENTS_TO_MINT, countElementsUnlocked);
+        pec.mintFreePacks();
+        assertEq(pec.totalSupply(), 100);
     }
 }

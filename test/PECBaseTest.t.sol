@@ -13,6 +13,10 @@ import {VRFCoordinatorV2_5Mock} from "@chainlink/contracts/src/v0.8/vrf/mocks/VR
 import {FundSubscription} from "script/VRFInteractions.s.sol";
 
 contract PECBaseTest is Test {
+    uint256 public ELEMENTS_IN_PACK;
+    uint256 public NUM_MAX_PACKS_MINTED_AT_ONCE;
+    uint256 public PACK_PRICE;
+
     PECTestContract pec;
     HelperConfig helperConfig;
     HelperConfig.NetworkConfig config;
@@ -27,6 +31,9 @@ contract PECBaseTest is Test {
         address pecTestContract;
         (pecTestContract, helperConfig) = (new PECDeployer()).deployContract();
         pec = PECTestContract(pecTestContract);
+        ELEMENTS_IN_PACK = pec.ELEMENTS_IN_PACK();
+        NUM_MAX_PACKS_MINTED_AT_ONCE = pec.NUM_MAX_PACKS_MINTED_AT_ONCE();
+        PACK_PRICE = pec.PACK_PRICE();
 
         fundSubscription = new FundSubscription();
 
@@ -37,6 +44,8 @@ contract PECBaseTest is Test {
 
         assert(address(pec) != address(0));
         assertEq(config.account, pec.owner());
+
+        vm.deal(user, type(uint128).max);
     }
 
     function testIsAlive() public view {
