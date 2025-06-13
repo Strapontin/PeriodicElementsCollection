@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 import {IElementsData} from "./interfaces/IElementsData.sol";
 
 contract ElementsData is IElementsData {
-    uint256 constant ANTIMATTER_OFFSET = 1000;
+    uint256 public constant ANTIMATTER_OFFSET = 1000;
 
     mapping(uint256 elementNumber => ElementDataStruct data) public elementsData; // List of elements' datas
     mapping(uint256 level => uint256[] elementsNumberUnlocked) public elementsUnlockedUnderLevel;
@@ -41,7 +41,7 @@ contract ElementsData is IElementsData {
                     result[rngIndex] = elementsUnlocked[i];
 
                     // 1/10k chances to be antimatter
-                    if (randomWords[rngIndex] % 10_007 == 0) {
+                    if ((randomWords[rngIndex] >> 242) % 10_000 == 0) {
                         result[rngIndex] += ANTIMATTER_OFFSET;
                     }
 
@@ -62,7 +62,7 @@ contract ElementsData is IElementsData {
         elementsWeight = new uint256[](availableElementsLength);
 
         for (uint256 i = 0; i < availableElementsLength; i++) {
-            elementsWeight[i] = getElementArtificialRAMWeight(elementsUnlocked[i]);
+            elementsWeight[i] = getElementArtificialRAMWeight(user, elementsUnlocked[i]);
             totalWeight += elementsWeight[i];
         }
     }
@@ -71,9 +71,13 @@ contract ElementsData is IElementsData {
         return elementsUnlockedUnderLevel[usersLevel[user]];
     }
 
-    function getElementArtificialRAMWeight(uint256 elementNumber) public view returns (uint256 artificialRAM) {
+    function getElementArtificialRAMWeight(address user, uint256 elementNumber)
+        public
+        view
+        returns (uint256 artificialRAM)
+    {
         uint256 elementBaseRAM = elementsData[elementNumber].initialRAM;
-        uint256 numBurnedTimes = burnedTimes[msg.sender][elementNumber];
+        uint256 numBurnedTimes = burnedTimes[user][elementNumber];
 
         // elementBaseRAM is set in deployer
         artificialRAM = 1e18 / (elementBaseRAM + (numBurnedTimes * 1_000));

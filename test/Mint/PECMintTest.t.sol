@@ -33,12 +33,6 @@ contract PECMintTest is PECBaseTest {
     }
 
     function test_mintingStates() public fundSubscriptionMax {
-        if (user.code.length > 0) {
-            return;
-        }
-
-        vm.warp(block.timestamp + 1 days);
-
         vm.prank(user);
         uint256 requestId = pec.mintPack{value: PACK_PRICE}();
 
@@ -76,9 +70,7 @@ contract PECMintTest is PECBaseTest {
         // 2nd test, should not pay more than max amount possible
         // Note that it pays back 1 more PACK_PRICE due to previous mintPack
         pec.mintPack{value: user.balance}();
-        assertEq(
-            type(uint128).max - (PACK_PRICE + PACK_PRICE * NUM_MAX_PACKS_MINTED_AT_ONCE), user.balance
-        );
+        assertEq(type(uint128).max - (PACK_PRICE + PACK_PRICE * NUM_MAX_PACKS_MINTED_AT_ONCE), user.balance);
     }
 
     function test_mintFreePacksShouldMint5HeliumAndHydrogen() public {
@@ -119,5 +111,72 @@ contract PECMintTest is PECBaseTest {
 
         pec.mintFreePacks();
         assertEq(pec.totalSupply(), 100);
+    }
+
+    function test_payForXpacksMints5XElements(uint256 packsToMint) public fundSubscriptionMax {
+        packsToMint = bound(packsToMint, 1, NUM_MAX_PACKS_MINTED_AT_ONCE);
+
+        vm.prank(user);
+        uint256 requestId = pec.mintPack{value: PACK_PRICE * packsToMint}();
+
+        vm.prank(address(vrfCoordinator));
+        vrfCoordinator.fulfillRandomWords(requestId, address(pec));
+
+        pec.unpackRandomMatter(requestId);
+
+        assertEq(pec.totalSupply(), packsToMint * ELEMENTS_IN_PACK);
+    }
+
+    function test_matterWorks() public fundSubscriptionMax {
+        // Shift to avoid having a modulo of 10k to not mint antimatter
+        uint256 matter = 1 << 242;
+
+        (, uint256 totalWeight,) = pec.getRealUserWeights(user);
+        uint256 offset = matter % totalWeight;
+
+        uint256[] memory randomWords = new uint256[](5);
+        randomWords[0] = matter;
+        randomWords[1] = matter - offset + totalWeight - 1; // Last unlocked element
+        randomWords[2] = matter - offset + totalWeight - 1;
+        randomWords[3] = matter;
+        randomWords[4] = matter;
+
+        vm.prank(user);
+        uint256 requestId = pec.mintPack{value: PACK_PRICE}();
+
+        vm.prank(address(vrfCoordinator));
+        vrfCoordinator.fulfillRandomWordsWithOverride(requestId, address(pec), randomWords);
+        pec.unpackRandomMatter(requestId);
+
+        for (uint256 i = 0; i < 3; i++) {
+            console2.log("Matter", i, pec.balanceOf(user, i));
+        }
+        for (uint256 i = 0; i < 3; i++) {
+            console2.log("Antimatter", i, pec.balanceOf(user, i + ANTIMATTER_OFFSET));
+        }
+
+        assertEq(pec.balanceOf(user, 1), 3); // 3 Hydrogen
+        assertEq(pec.balanceOf(user, 2), 2); // 2 Helium
+    }
+
+    function test_mintAntimatter() public fundSubscriptionMax {
+        (, uint256 totalWeight,) = pec.getRealUserWeights(user);
+
+        uint256[] memory randomWords = new uint256[](5);
+        randomWords[0] = 0;
+        randomWords[1] = totalWeight - 1; // Last unlocked element
+        randomWords[2] = totalWeight - 1;
+        randomWords[3] = 0;
+        randomWords[4] = 0;
+
+        vm.prank(user);
+        uint256 requestId = pec.mintPack{value: PACK_PRICE}();
+
+        vm.prank(address(vrfCoordinator));
+        vrfCoordinator.fulfillRandomWordsWithOverride(requestId, address(pec), randomWords);
+        pec.unpackRandomMatter(requestId);
+
+        assertEq(pec.balanceOf(user, ANTIMATTER_OFFSET + 1), 3); // 3 Hydrogen
+        assertEq(pec.balanceOf(user, ANTIMATTER_OFFSET + 2), 2); // 2 Helium
     }
 }

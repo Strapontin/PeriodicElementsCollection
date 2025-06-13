@@ -24,7 +24,7 @@
 //         _;
 //     }
 
-//     function testRandomness() public fundSubscriptionMax {
+//     function testRandomness() public vrfCoordinator {
 //         uint256 numOfUsers = 1000;
 
 //         vm.warp(block.timestamp + 1 days);
@@ -47,50 +47,6 @@
 //         console.log("Supply of tokenId 2 =", pec.totalSupply(2));
 //         console.log("Supply of antimatter tokenId 1 =", pec.totalSupply(10_001));
 //         console.log("Supply of antimatter tokenId 2 =", pec.totalSupply(10_002));
-//     }
-
-//     function testUserCantMintIfNoPackToMintAndNoPayement() public fundSubscriptionMax {
-//         vm.expectRevert(PeriodicElementsCollection.PEC__NoPackToMint.selector);
-
-//         vm.prank(user);
-//         pec.mintPack();
-//     }
-
-//     function testUserCanMintOneFreePackPerDay() public fundSubscriptionMax {
-//         uint256 totalMintedElements = 0;
-//         vm.warp(block.timestamp + 12 hours);
-
-//         // User mints daily for 100 days
-//         for (uint256 i = 0; i < 100; i++) {
-//             vm.warp(block.timestamp + 1 days);
-
-//             vm.prank(user);
-//             uint256 requestId = pec.mintPack();
-
-//             vm.prank(address(vrfCoordinator));
-//             vrfCoordinator.fulfillRandomWords(requestId, address(pec));
-//             pec.unpackRandomMatter(requestId);
-
-//             assertEq(totalMintedElements + 5, pec.totalSupply());
-//             totalMintedElements = pec.totalSupply();
-//         }
-
-//         assertEq(500, totalMintedElements);
-//         assertEq(500, pec.totalSupply(1) + pec.totalSupply(2));
-//         assertEq(500, pec.balanceOf(user, 1) + pec.balanceOf(user, 2));
-//     }
-
-//     function testUserCanMintMax7FreePacks() public fundSubscriptionMax {
-//         vm.warp(block.timestamp + 50 weeks);
-
-//         vm.prank(user);
-//         uint256 requestId = pec.mintPack();
-
-//         vm.prank(address(vrfCoordinator));
-//         vrfCoordinator.fulfillRandomWords(requestId, address(pec));
-//         pec.unpackRandomMatter(requestId);
-
-//         assertEq(7 * 5, pec.totalSupply());
 //     }
 
 //     function testUserCanMintMorePacksIfPayCorrectAmount(uint256 nbPacksToMints) public fundSubscriptionMax {

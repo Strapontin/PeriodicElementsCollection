@@ -16,6 +16,7 @@ contract PECBaseTest is Test {
     uint256 public ELEMENTS_IN_PACK;
     uint256 public NUM_MAX_PACKS_MINTED_AT_ONCE;
     uint256 public PACK_PRICE;
+    uint256 public ANTIMATTER_OFFSET;
 
     PECTestContract pec;
     HelperConfig helperConfig;
@@ -34,6 +35,7 @@ contract PECBaseTest is Test {
         ELEMENTS_IN_PACK = pec.ELEMENTS_IN_PACK();
         NUM_MAX_PACKS_MINTED_AT_ONCE = pec.NUM_MAX_PACKS_MINTED_AT_ONCE();
         PACK_PRICE = pec.PACK_PRICE();
+        ANTIMATTER_OFFSET = pec.ANTIMATTER_OFFSET();
 
         fundSubscription = new FundSubscription();
 
@@ -59,7 +61,7 @@ contract PECBaseTest is Test {
         assertEq(1, level);
 
         uint256 expectedRAM = 1e18 / ram;
-        assertEq(expectedRAM, pec.getElementArtificialRAMWeight(1));
+        assertEq(expectedRAM, pec.getElementArtificialRAMWeight(user, 1));
     }
 
     function testElementsLevelIsCorrect() public view {
