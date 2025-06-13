@@ -8,3 +8,11 @@ remappings= [
 ]
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
+
+[fuzz]
+seed = "0x1"
+
+[invariant]
+runs = 2560
+depth = 32
+fail_on_revert = true

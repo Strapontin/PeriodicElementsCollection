@@ -5,15 +5,15 @@ import {PeriodicElementsCollection} from "src/PeriodicElementsCollection.sol";
 import {DarkMatterTokens} from "src/DarkMatterTokens.sol";
 import {ElementsData} from "src/ElementsData.sol";
 import {HelperConfig} from "script/HelperConfig.s.sol";
-import {PeriodicElementsCollectionDeployer} from "script/PeriodicElementsCollectionDeployer.s.sol";
-import {PeriodicElementsCollectionTestContract} from "test/contracts/PeriodicElementsCollectionTestContract.sol";
+import {PECDeployer} from "script/PECDeployer.s.sol";
+import {PECTestContract} from "test/contracts/PECTestContract.sol";
 
 import {Test, console} from "forge-std/Test.sol";
 import {VRFCoordinatorV2_5Mock} from "@chainlink/contracts/src/v0.8/vrf/mocks/VRFCoordinatorV2_5Mock.sol";
 import {FundSubscription} from "script/VRFInteractions.s.sol";
 
-contract PeriodicElementsCollectionBaseTest is Test {
-    PeriodicElementsCollectionTestContract pec;
+contract PECBaseTest is Test {
+    PECTestContract pec;
     HelperConfig helperConfig;
     HelperConfig.NetworkConfig config;
 
@@ -24,10 +24,9 @@ contract PeriodicElementsCollectionBaseTest is Test {
     FundSubscription fundSubscription;
 
     function setUp() public {
-        address periodicElementsCollectionTestContract;
-        (periodicElementsCollectionTestContract, helperConfig) =
-            (new PeriodicElementsCollectionDeployer()).deployContract();
-        pec = PeriodicElementsCollectionTestContract(periodicElementsCollectionTestContract);
+        address pecTestContract;
+        (pecTestContract, helperConfig) = (new PECDeployer()).deployContract();
+        pec = PECTestContract(pecTestContract);
 
         fundSubscription = new FundSubscription();
 

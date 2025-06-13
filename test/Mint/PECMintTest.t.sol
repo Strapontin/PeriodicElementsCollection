@@ -5,15 +5,15 @@ import {PeriodicElementsCollection} from "src/PeriodicElementsCollection.sol";
 import {DarkMatterTokens} from "src/DarkMatterTokens.sol";
 import {ElementsData} from "src/ElementsData.sol";
 import {HelperConfig} from "script/HelperConfig.s.sol";
-import {PeriodicElementsCollectionDeployer} from "script/PeriodicElementsCollectionDeployer.s.sol";
-import {PeriodicElementsCollectionTestContract} from "test/contracts/PeriodicElementsCollectionTestContract.sol";
+import {PECDeployer} from "script/PECDeployer.s.sol";
+import {PECTestContract} from "test/contracts/PECTestContract.sol";
 
 import {Test, console} from "forge-std/Test.sol";
 import {VRFCoordinatorV2_5Mock} from "@chainlink/contracts/src/v0.8/vrf/mocks/VRFCoordinatorV2_5Mock.sol";
 import {FundSubscription} from "script/VRFInteractions.s.sol";
-import {PeriodicElementsCollectionBaseTest} from "../PeriodicElementsCollectionBaseTest.t.sol";
+import {PECBaseTest} from "../PECBaseTest.t.sol";
 
-contract PeriodicElementsCollectionMintTest is PeriodicElementsCollectionBaseTest {
+contract PECMintTest is PECBaseTest {
     modifier fundSubscriptionMax() {
         fundSubscription.fundSubscription(config, type(uint256).max - 3 ether);
         _;
@@ -32,8 +32,38 @@ contract PeriodicElementsCollectionMintTest is PeriodicElementsCollectionBaseTes
         VRFCoordinatorV2_5Mock(vrfCoordinator).fulfillRandomWords(1, address(pec));
     }
 
+    function testMintingStates() public fundSubscriptionMax {
+        vm.warp(block.timestamp + 1 days);
+
+        vm.prank(user);
+        uint256 requestId = pec.mintPack();
+
+        // Status is now Pending for VRF Callback
+        assertEq(
+            uint256(PeriodicElementsCollection.VRFStatus.PendingVRFCallback),
+            uint256(pec.getVRFStateFromRequestId(requestId).status)
+        );
+
+        vm.prank(address(vrfCoordinator));
+        vrfCoordinator.fulfillRandomWords(requestId, address(pec));
+
+        // Status is now Ready To Mint (need EOA call)
+        assertEq(
+            uint256(PeriodicElementsCollection.VRFStatus.ReadyToMint),
+            uint256(pec.getVRFStateFromRequestId(requestId).status)
+        );
+
+        pec.fulfillMintCard(requestId);
+
+        // Status is now Minted
+        assertEq(
+            uint256(PeriodicElementsCollection.VRFStatus.Minted),
+            uint256(pec.getVRFStateFromRequestId(requestId).status)
+        );
+    }
+
     function testFulfillMintCardCanOnlyBeCalledAfterFulfillRandomWords() public fundSubscriptionMax {
-        vm.warp(block.timestamp + 24 hours);
+        vm.warp(block.timestamp + 1 days);
 
         vm.prank(user);
         uint256 requestId = pec.mintPack();
@@ -46,12 +76,15 @@ contract PeriodicElementsCollectionMintTest is PeriodicElementsCollectionBaseTes
         pec.fulfillMintCard(requestId);
 
         assertNotEq(0, pec.totalSupply());
+
+        vm.expectRevert(PeriodicElementsCollection.PEC__RequestIdAlreadyMinted.selector);
+        pec.fulfillMintCard(requestId);
     }
 
     function testRandomness() public fundSubscriptionMax {
         uint256 numOfUsers = 1000;
 
-        vm.warp(block.timestamp + 24 hours);
+        vm.warp(block.timestamp + 1 days);
 
         for (uint256 i = 1; i <= numOfUsers; i++) {
             vm.prank(address(bytes20(uint160(i))));
@@ -77,8 +110,9 @@ contract PeriodicElementsCollectionMintTest is PeriodicElementsCollectionBaseTes
     }
 
     function testUserCantMintIfNoPackToMintAndNoPayement() public fundSubscriptionMax {
-        vm.prank(user);
         vm.expectRevert(PeriodicElementsCollection.PEC__NoPackToMint.selector);
+
+        vm.prank(user);
         pec.mintPack();
     }
 
@@ -121,10 +155,10 @@ contract PeriodicElementsCollectionMintTest is PeriodicElementsCollectionBaseTes
 
     function testUserCanMintMorePacksIfPayCorrectAmount(uint256 nbPacksToMints) public fundSubscriptionMax {
         nbPacksToMints = bound(nbPacksToMints, 1, 20);
-        vm.deal(user, pec.mintPackPrice() * nbPacksToMints);
+        vm.deal(user, pec.PACK_PRICE() * nbPacksToMints);
 
         vm.startPrank(user);
-        uint256 requestId = pec.mintPack{value: pec.mintPackPrice() * nbPacksToMints}();
+        uint256 requestId = pec.mintPack{value: pec.PACK_PRICE() * nbPacksToMints}();
         vm.stopPrank();
 
         vm.prank(address(vrfCoordinator));
@@ -146,9 +180,9 @@ contract PeriodicElementsCollectionMintTest is PeriodicElementsCollectionBaseTes
         vrfCoordinator.fulfillRandomWords(requestId, address(pec));
         pec.fulfillMintCard(requestId);
 
-        assertEq(pec.NUM_MAX_ELEMENTS_MINTED_AT_ONCE(), pec.totalSupply(), "Not correct amount of elements minted");
+        assertEq(pec.NUM_MAX_PACKS_MINTED_AT_ONCE() * 5, pec.totalSupply(), "Not correct amount of elements minted");
 
-        uint256 expectedRefund = initialUserFund - (pec.mintPackPrice() * pec.totalSupply() / pec.ELEMENTS_IN_PACK());
+        uint256 expectedRefund = initialUserFund - (pec.PACK_PRICE() * pec.totalSupply() / pec.ELEMENTS_IN_PACK());
         assertEq(expectedRefund, user.balance, "User should be refunded correct amount");
     }
 
@@ -165,7 +199,7 @@ contract PeriodicElementsCollectionMintTest is PeriodicElementsCollectionBaseTes
 
         uint256 NUM_TOTAL_ELEMENTS_TO_MINT = 120;
 
-        uint256 mintAllValue = NUM_TOTAL_ELEMENTS_TO_MINT * pec.mintPackPrice() / pec.ELEMENTS_IN_PACK();
+        uint256 mintAllValue = NUM_TOTAL_ELEMENTS_TO_MINT * pec.PACK_PRICE() / pec.ELEMENTS_IN_PACK();
         vm.deal(user, mintAllValue * 14);
 
         uint256 requestId = 0;
@@ -181,14 +215,11 @@ contract PeriodicElementsCollectionMintTest is PeriodicElementsCollectionBaseTes
         pec.setUserLevel(user, levelToSet);
         assertEq(levelToSet, pec.getUserLevel(user));
 
-        // Set values of elements to be minted
-        pec.setPredefinedRandomWords(requestId + 1, randomWords);
-
         // Mints elements
         vm.prank(user);
         requestId = pec.mintPack{value: mintAllValue}();
         vm.prank(address(vrfCoordinator));
-        vrfCoordinator.fulfillRandomWords(requestId, address(pec));
+        vrfCoordinator.fulfillRandomWordsWithOverride(requestId, address(pec), randomWords);
         pec.fulfillMintCard(requestId);
 
         uint256[] memory elementsUnlocked = pec.getElementsUnlockedByPlayer(user);

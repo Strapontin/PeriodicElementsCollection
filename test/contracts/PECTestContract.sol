@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 import {console} from "forge-std/console.sol";
 import {PeriodicElementsCollection} from "../../src/PeriodicElementsCollection.sol";
 
-contract PeriodicElementsCollectionTestContract is PeriodicElementsCollection {
+contract PECTestContract is PeriodicElementsCollection {
     mapping(uint256 requestId => uint256[] words) predefinedRandomWordsOfRequestId;
 
     constructor(uint256 _subscriptionId, address _vrfCoordinatorV2Address, ElementDataStruct[] memory datas)
@@ -36,27 +36,30 @@ contract PeriodicElementsCollectionTestContract is PeriodicElementsCollection {
         }
     }
 
-    // Assums that all RAMs are equal to 1
-    function setPredefinedRandomWords(uint256 requestId, uint256[] memory randomWords) public {
-        predefinedRandomWordsOfRequestId[requestId] = randomWords;
-    }
+    // // Assums that all RAMs are equal to 1
+    // function setPredefinedRandomWords(uint256 requestId, uint256[] memory randomWords) public {
+    //     predefinedRandomWordsOfRequestId[requestId] = randomWords;
+    // }
 
-    function fulfillRandomWords(uint256 requestId, uint256[] calldata randomWords) internal override {
-        // pre-logic to implement for tests
-        uint256[] memory predefinedRandomWords = predefinedRandomWordsOfRequestId[requestId];
+    // function fulfillRandomWords(uint256 requestId, uint256[] calldata randomWords) internal override {
+    //     // pre-logic to implement for tests
+    //     uint256[] memory predefinedRandomWords = predefinedRandomWordsOfRequestId[requestId];
 
-        if (predefinedRandomWords.length > 0) {
-            console.log(
-                "predefinedRandomWords.length == randomWords.length :",
-                predefinedRandomWords.length == randomWords.length
-            );
-            require(
-                predefinedRandomWords.length == randomWords.length, "Unexpected number of words compared to predefined"
-            );
+    //     if (predefinedRandomWords.length > 0) {
+    //         console.log(
+    //             "predefinedRandomWords.length == randomWords.length :",
+    //             predefinedRandomWords.length == randomWords.length
+    //         );
+    //         require(
+    //             predefinedRandomWords.length == randomWords.length, "Unexpected number of words compared to predefined"
+    //         );
 
-            storeRandomnessResult(requestId, predefinedRandomWords);
-            return;
-        }
-        storeRandomnessResult(requestId, randomWords);
+    //         super.fulfillRandomWords(requestId, predefinedRandomWords);
+    //         return;
+    //     }
+    //     super.fulfillRandomWords(requestId, randomWords);
+    // }
+    function test_FulfillRandomWords(uint256 requestId, uint256[] calldata randomWords) external {
+        fulfillRandomWords(requestId, randomWords);
     }
 }

@@ -1,16 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {console} from "forge-std/console.sol";
+import {IElementsData} from "./interfaces/IElementsData.sol";
 
-contract ElementsData {
-    struct ElementDataStruct {
-        uint256 number; // Number of the element in the periodic table
-        string name; // Full name of the element
-        string symbol; // Short symbol of the element
-        uint256 initialRAM; // Initial Relative Atomic Mass of the element
-        uint256 level; // Level of the element (from 1 to 7)
-    }
+contract ElementsData is IElementsData {
+    uint256 constant ANTIMATTER_OFFSET = 1000;
 
     mapping(uint256 elementNumber => ElementDataStruct data) public elementsData; // List of elements' datas
     mapping(uint256 level => uint256[] elementsNumberUnlocked) public elementsUnlockedUnderLevel;
@@ -48,8 +42,7 @@ contract ElementsData {
 
                     // 1/10k chances to be antimatter
                     if (randomWords[rngIndex] % 10_007 == 0) {
-                        console.log("ANTIMATTER");
-                        result[rngIndex] += 10_007;
+                        result[rngIndex] += ANTIMATTER_OFFSET;
                     }
 
                     break;

@@ -21,6 +21,7 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
     error PEC__NoPackToMint();
     error PEC__EthNotSend();
     error PEC__VRFNeedCallbackNotReceived();
+    error PEC__RequestIdAlreadyMinted();
 
     enum VRFStatus {
         None,
@@ -35,11 +36,12 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
         VRFStatus status;
     }
 
+    mapping(uint256 => VRFState) public requestIdToVRFState;
+
     string public constant name = "Periodic Elements Collection";
     uint256 public constant ELEMENTS_IN_PACK = 5;
-    uint256 public constant NUM_MAX_ELEMENTS_MINTED_AT_ONCE = 250;
-
-    mapping(uint256 => VRFState) public requestIdToVRFState;
+    uint256 public constant NUM_MAX_PACKS_MINTED_AT_ONCE = 500;
+    uint256 public constant PACK_PRICE = 0.002 ether;
 
     // Chainlink Variables
     uint256 public immutable subscriptionId;
@@ -51,7 +53,6 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
     // Gameplay variables
     DarkMatterTokens public immutable darkMatterTokens;
     mapping(address user => uint256 timestampLastFreeMint) lastFreeMintFromUsers;
-    uint256 public mintPackPrice = 0.002 ether;
 
     event MintRequestInitalized(uint256 indexed requestId, address indexed account);
 
@@ -72,50 +73,35 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
     }
 
     function mintPack() public payable returns (uint256 requestId) {
-        // The next two lines returns the timestamp at the start of the day
-        uint256 startOfTheDay;
-        unchecked {
-            startOfTheDay = block.timestamp / 1 days;
-            startOfTheDay = startOfTheDay * 1 days;
-        }
-
-        uint256 lastFreeMint = lastFreeMintFromUsers[msg.sender];
-        uint256 numOfFreePacksAvailable = (startOfTheDay / 1 days) - (lastFreeMint / 1 days);
+        uint256 freePacksMinted = _mintFreePacks(msg.sender);
 
         // If no free packs available and not enough ether send, revert
-        if (numOfFreePacksAvailable == 0 && msg.value < mintPackPrice) revert PEC__NoPackToMint();
+        if (freePacksMinted == 0 && msg.value < PACK_PRICE) revert PEC__NoPackToMint();
 
-        lastFreeMintFromUsers[msg.sender] = block.timestamp;
-
-        // Max 7 days free minting
-        if (numOfFreePacksAvailable > 7) {
-            numOfFreePacksAvailable = 7;
-        }
-
-        uint256 numOfPaidPacksToMint = msg.value / mintPackPrice;
-        uint32 totalNumElementsToMint = uint32((numOfFreePacksAvailable + numOfPaidPacksToMint) * ELEMENTS_IN_PACK);
+        uint256 numPacksPaid = msg.value / PACK_PRICE;
+        uint32 numWordsToRequest = uint32(numPacksPaid * ELEMENTS_IN_PACK);
 
         // Too many packs minted (because of high msg.value)
-        if (totalNumElementsToMint > NUM_MAX_ELEMENTS_MINTED_AT_ONCE) {
-            numOfPaidPacksToMint -= (totalNumElementsToMint - NUM_MAX_ELEMENTS_MINTED_AT_ONCE) / ELEMENTS_IN_PACK;
-            totalNumElementsToMint = uint32(NUM_MAX_ELEMENTS_MINTED_AT_ONCE);
+        if (numPacksPaid > NUM_MAX_PACKS_MINTED_AT_ONCE) {
+            numPacksPaid = NUM_MAX_PACKS_MINTED_AT_ONCE;
+            numWordsToRequest = uint32(NUM_MAX_PACKS_MINTED_AT_ONCE * ELEMENTS_IN_PACK);
         }
 
-        VRFV2PlusClient.RandomWordsRequest memory request = VRFV2PlusClient.RandomWordsRequest({
-            keyHash: KEY_HASH,
-            subId: subscriptionId,
-            requestConfirmations: BLOCK_CONFIRMATIONS,
-            callbackGasLimit: CALLBACK_GAS_LIMIT,
-            numWords: totalNumElementsToMint,
-            extraArgs: VRFV2PlusClient._argsToBytes(VRFV2PlusClient.ExtraArgsV1({nativePayment: false}))
-        });
-
-        requestId = s_vrfCoordinator.requestRandomWords(request);
+        requestId = s_vrfCoordinator.requestRandomWords(
+            VRFV2PlusClient.RandomWordsRequest({
+                keyHash: KEY_HASH,
+                subId: subscriptionId,
+                requestConfirmations: BLOCK_CONFIRMATIONS,
+                callbackGasLimit: CALLBACK_GAS_LIMIT,
+                numWords: numWordsToRequest,
+                extraArgs: VRFV2PlusClient._argsToBytes(VRFV2PlusClient.ExtraArgsV1({nativePayment: false}))
+            })
+        );
 
         requestIdToVRFState[requestId].minterAddress = msg.sender;
         requestIdToVRFState[requestId].status = VRFStatus.PendingVRFCallback;
 
-        uint256 leftOverEth = msg.value - (mintPackPrice * numOfPaidPacksToMint);
+        uint256 leftOverEth = msg.value - (numPacksPaid * PACK_PRICE);
         if (leftOverEth != 0) {
             (bool sent,) = address(msg.sender).call{value: leftOverEth}("");
             if (!sent) revert PEC__EthNotSend();
@@ -124,21 +110,46 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
         emit MintRequestInitalized(requestId, msg.sender);
     }
 
-    function fulfillRandomWords(uint256 requestId, uint256[] calldata randomWords) internal virtual override {
-        storeRandomnessResult(requestId, randomWords);
+    function mintFreePacks() external {
+        if (_mintFreePacks(msg.sender) == 0) revert PEC__NoPackToMint();
     }
 
-    // Can the gas be reduced even more ?
-    function storeRandomnessResult(uint256 requestId, uint256[] memory randomWords) internal {
-        for (uint256 i = 0; i < randomWords.length; i++) {
-            requestIdToVRFState[requestId].randomWords.push(randomWords[i]);
+    function _mintFreePacks(address user) internal returns (uint256 numPacksMinted) {
+        uint256 startOfTheDay = block.timestamp / 1 days * 1 days;
+        numPacksMinted = (startOfTheDay / 1 days) - (lastFreeMintFromUsers[msg.sender] / 1 days);
+
+        // If no free packs available and not enough ether send, revert
+        if (numPacksMinted == 0) return 0;
+
+        lastFreeMintFromUsers[msg.sender] = block.timestamp; // TODO Maybe it should be `startOfTheDay`, because else user can mint once evey 2 days ?
+
+        // Max 7 days free minting
+        if (numPacksMinted > 7) {
+            numPacksMinted = 7;
         }
+
+        uint256[] memory ids = new uint256[](2);
+        uint256[] memory amounts = new uint256[](2);
+        ids[0] = 1; // Hydrogen
+        ids[1] = 2; // Helium
+        amounts[0] = 5 * numPacksMinted;
+        amounts[1] = 5 * numPacksMinted;
+
+        // Mint 5 Hydrogen and 5 Helium to the user for each pack
+        _mintBatch(user, ids, amounts, "");
+    }
+
+    function fulfillRandomWords(uint256 requestId, uint256[] calldata randomWords) internal virtual override {
+        requestIdToVRFState[requestId].randomWords = randomWords;
         requestIdToVRFState[requestId].status = VRFStatus.ReadyToMint;
     }
 
     function fulfillMintCard(uint256 requestId) public {
         VRFState memory vrfState = requestIdToVRFState[requestId];
-        if (vrfState.status != VRFStatus.ReadyToMint) revert PEC__VRFNeedCallbackNotReceived();
+
+        if (vrfState.status == VRFStatus.PendingVRFCallback) revert PEC__VRFNeedCallbackNotReceived();
+        if (vrfState.status == VRFStatus.Minted) revert PEC__RequestIdAlreadyMinted();
+        requestIdToVRFState[requestId].status = VRFStatus.Minted;
 
         uint256[] memory ids = new uint256[](vrfState.randomWords.length);
         uint256[] memory values = new uint256[](vrfState.randomWords.length);
