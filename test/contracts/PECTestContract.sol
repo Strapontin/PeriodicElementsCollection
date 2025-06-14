@@ -54,3 +54,5 @@ contract PECTestContract is PeriodicElementsCollection {
         assert(totalSupply() == 236);
     }
 }
+
+contract RevertOnReceive {}

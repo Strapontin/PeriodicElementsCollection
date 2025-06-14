@@ -18,6 +18,7 @@ import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/V
 /// https://x.com/0xStrapontin on X
 contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, ElementsData {
     error PEC__NoPackToMint();
+    error PEC__UserDidNotPayEnough();
     error PEC__EthNotSend();
     error PEC__NotInReadyToMintState();
     error PEC__RequestIdAlreadyMinted();
@@ -77,7 +78,7 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
 
     function mintPack() public payable returns (uint256 requestId) {
         // If no free packs available and not enough ether send, revert
-        if (msg.value < PACK_PRICE) revert PEC__NoPackToMint();
+        if (msg.value < PACK_PRICE) revert PEC__UserDidNotPayEnough();
 
         uint256 numPacksPaid = msg.value / PACK_PRICE;
         uint32 numWordsToRequest = uint32(numPacksPaid * ELEMENTS_IN_PACK);

@@ -6,7 +6,7 @@ import {DarkMatterTokens} from "src/DarkMatterTokens.sol";
 import {ElementsData} from "src/ElementsData.sol";
 import {HelperConfig} from "script/HelperConfig.s.sol";
 import {PECDeployer} from "script/PECDeployer.s.sol";
-import {PECTestContract} from "test/contracts/PECTestContract.sol";
+import {PECTestContract, RevertOnReceive} from "test/contracts/PECTestContract.sol";
 
 import {Test, console2} from "forge-std/Test.sol";
 import {VRFCoordinatorV2_5Mock} from "@chainlink/contracts/src/v0.8/vrf/mocks/VRFCoordinatorV2_5Mock.sol";
@@ -247,5 +247,52 @@ contract PECMintTest is PECBaseTest {
 
         elements = pec.getElementsAtLevel(7);
         assertEq(elements.length, 32);
+    }
+
+    function test_cantMintWithoutPaying(uint256 price) public {
+        price = bound(price, 0, PACK_PRICE - 1);
+
+        vm.startPrank(user);
+        vm.expectRevert(PeriodicElementsCollection.PEC__UserDidNotPayEnough.selector);
+        pec.mintPack{value: price}();
+    }
+
+    function test_cantUnpackIfNotStatusReadyToMint() public fundSubscriptionMax {
+        vm.startPrank(user);
+
+        uint256 requestId = 0;
+
+        // Status == None
+        assert(pec.getVRFStateFromRequestId(requestId).status == PeriodicElementsCollection.VRFStatus.None);
+        vm.expectRevert(PeriodicElementsCollection.PEC__NotInReadyToMintState.selector);
+        pec.unpackRandomMatter(requestId);
+
+        // Status == PendingVRFCallback
+        requestId = pec.mintPack{value: PACK_PRICE}();
+        assert(
+            pec.getVRFStateFromRequestId(requestId).status == PeriodicElementsCollection.VRFStatus.PendingVRFCallback
+        );
+        vm.expectRevert(PeriodicElementsCollection.PEC__NotInReadyToMintState.selector);
+        pec.unpackRandomMatter(requestId);
+
+        // Status == Minted
+        requestId = pec.mintPack{value: PACK_PRICE}();
+        vm.stopPrank();
+        vm.prank(address(vrfCoordinator));
+        vrfCoordinator.fulfillRandomWords(requestId, address(pec));
+        pec.unpackRandomMatter(requestId);
+
+        assert(pec.getVRFStateFromRequestId(requestId).status == PeriodicElementsCollection.VRFStatus.Minted);
+        vm.expectRevert(PeriodicElementsCollection.PEC__RequestIdAlreadyMinted.selector);
+        pec.unpackRandomMatter(requestId);
+    }
+
+    function test_revertOnReceiveCantMint() public {
+        RevertOnReceive revertOnReceive = new RevertOnReceive();
+        vm.deal(address(revertOnReceive), 1 ether);
+
+        vm.prank(address(revertOnReceive));
+        vm.expectRevert(PeriodicElementsCollection.PEC__EthNotSend.selector);
+        pec.mintPack{value: PACK_PRICE + 1}();
     }
 }
