@@ -40,7 +40,7 @@ jobs:
 
       - name: Run make install
         run: |
-          make install
+          make install-github-workflow
 
       - name: Run Forge build
         run: |
