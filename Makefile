@@ -14,12 +14,10 @@ remove :; rm -rf .gitmodules && rm -rf .git/modules/* && rm -rf lib && touch .gi
 
 # install :; forge install cyfrin/foundry-devops@0.2.2 --no-commit && forge install foundry-rs/forge-std@v1.8.2 --no-commit && forge install openzeppelin/openzeppelin-contracts@v5.0.2 --no-commit
 install :; 	
-	forge install foundry-rs/forge-std --no-commit && \
-	forge install openzeppelin/openzeppelin-contracts@v5.0.2 --no-commit && \
-	forge install smartcontractkit/chainlink-brownie-contracts --no-commit && \
-	forge install cyfrin/foundry-devops@0.2.2 --no-commit
-	# forge install openzeppelin/openzeppelin-contracts-upgradeable@v5.0.2 --no-commit && \
-	# forge install OpenZeppelin/openzeppelin-foundry-upgrades@v0.3.3 --no-commit
+	forge install foundry-rs/forge-std && \
+	forge install openzeppelin/openzeppelin-contracts@v5.3.0 && \
+	forge install smartcontractkit/chainlink-brownie-contracts && \
+	forge install cyfrin/foundry-devops@0.2.2
 
 # Update Dependencies
 update:; forge update
