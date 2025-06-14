@@ -60,7 +60,7 @@ contract PECMintTest is PECBaseTest {
         );
     }
 
-    function test_payMoreShouldPayBack() public {
+    function test_refund() public {
         // 1st test, pay 1.5 pack, should pay back 0.5
         vm.startPrank(user);
         pec.mintPack{value: PACK_PRICE + PACK_PRICE / 2}();
@@ -178,5 +178,36 @@ contract PECMintTest is PECBaseTest {
 
         assertEq(pec.balanceOf(user, ANTIMATTER_OFFSET + 1), 3); // 3 Hydrogen
         assertEq(pec.balanceOf(user, ANTIMATTER_OFFSET + 2), 2); // 2 Helium
+    }
+
+    function test_elementsUnlockedByPlayer() public {
+        // By default should be 2 elements
+        uint256[] memory elements = pec.getElementsUnlockedByPlayer(user);
+        assertEq(elements.length, 2);
+
+        // At level 2 should be 10, etc
+        pec.setUserLevel(user, 1);
+        elements = pec.getElementsUnlockedByPlayer(user);
+        assertEq(elements.length, 10);
+
+        pec.setUserLevel(user, 2);
+        elements = pec.getElementsUnlockedByPlayer(user);
+        assertEq(elements.length, 18);
+
+        pec.setUserLevel(user, 3);
+        elements = pec.getElementsUnlockedByPlayer(user);
+        assertEq(elements.length, 36);
+
+        pec.setUserLevel(user, 4);
+        elements = pec.getElementsUnlockedByPlayer(user);
+        assertEq(elements.length, 54);
+
+        pec.setUserLevel(user, 5);
+        elements = pec.getElementsUnlockedByPlayer(user);
+        assertEq(elements.length, 86);
+
+        pec.setUserLevel(user, 6);
+        elements = pec.getElementsUnlockedByPlayer(user);
+        assertEq(elements.length, 118);
     }
 }
