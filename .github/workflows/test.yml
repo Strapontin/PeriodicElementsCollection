@@ -34,10 +34,6 @@ jobs:
           forge fmt --check
         id: fmt
 
-      - name: Run git ls-remote --tags https://github.com/openzeppelin/openzeppelin-contracts
-        run: |
-          git ls-remote --tags https://github.com/openzeppelin/openzeppelin-contracts
-
       - name: Run make install
         run: |
           make install-github-workflow

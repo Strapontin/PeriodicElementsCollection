@@ -21,9 +21,9 @@ install :;
 
 install-github-workflow :; 	
 	forge install foundry-rs/forge-std && \
-	forge install openzeppelin/openzeppelin-contracts@v5.2.0 && \
 	forge install smartcontractkit/chainlink-brownie-contracts && \
-	forge install cyfrin/foundry-devops@0.2.2
+	forge install cyfrin/foundry-devops@0.2.2 && \
+	forge install openzeppelin/openzeppelin-contracts@v5.2.0
 
 # Update Dependencies
 update:; forge update
