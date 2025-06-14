@@ -6,29 +6,33 @@ import {IElementsData} from "./interfaces/IElementsData.sol";
 contract ElementsData is IElementsData {
     uint256 public constant ANTIMATTER_OFFSET = 1000;
 
-    mapping(uint256 elementNumber => ElementDataStruct data) public elementsData; // List of elements' datas
-    mapping(uint256 level => uint256[] elementsNumberUnlocked) public elementsUnlockedUnderLevel;
-    mapping(address user => mapping(uint256 elementNumber => uint256 burnedTimes)) burnedTimes;
-    mapping(address user => uint256 level) public usersLevel; // 0 indexed : lvl 1 = 0
+    mapping(uint256 elementNumber => ElementDataStruct) public elementsData; // List of elements' datas
+    mapping(uint256 level => uint256[]) public elementsAtLevel;
+    mapping(uint256 level => uint256[]) public elementsUnlockedUnderLevel;
+    mapping(address user => mapping(uint256 elementNumber => uint256)) burnedTimes;
+    mapping(address user => uint256) public usersLevel;
 
     constructor(ElementDataStruct[] memory datas) {
         for (uint256 i = 0; i < datas.length; i++) {
             elementsData[datas[i].number] = datas[i];
+            elementsAtLevel[datas[i].level].push(datas[i].number);
 
             // Fills lvl 1 elements in all levels, lvl 2 in all except lvl 1, ...
             for (uint256 lvl = 7; lvl >= datas[i].level; lvl--) {
-                elementsUnlockedUnderLevel[lvl - 1].push(datas[i].number);
+                elementsUnlockedUnderLevel[lvl].push(datas[i].number);
             }
         }
     }
 
-    function pickRandomElementAvailable(address user, uint256[] memory randomWords)
+    // levelToMint > ANTIMATTER_OFFSET => must mint an antimatter
+    function pickRandomElementAvailable(address user, uint256[] memory randomWords, uint256 levelToMint)
         internal
         view
         returns (uint256[] memory result)
     {
         result = new uint256[](randomWords.length);
-        (uint256[] memory weights, uint256 totalWeight, uint256[] memory elementsUnlocked) = getRealUserWeights(user);
+        (uint256[] memory weights, uint256 totalWeight, uint256[] memory elementsUnlocked) =
+            getRealUserWeightsAtLevel(user, levelToMint);
 
         for (uint256 rngIndex = 0; rngIndex < randomWords.length; rngIndex++) {
             uint256 random = randomWords[rngIndex] % totalWeight;
@@ -41,7 +45,7 @@ contract ElementsData is IElementsData {
                     result[rngIndex] = elementsUnlocked[i];
 
                     // 1/10k chances to be antimatter
-                    if ((randomWords[rngIndex] >> 242) % 10_000 == 0) {
+                    if (levelToMint > ANTIMATTER_OFFSET || (randomWords[rngIndex] >> 242) % 10_000 == 0) {
                         result[rngIndex] += ANTIMATTER_OFFSET;
                     }
 
@@ -51,12 +55,20 @@ contract ElementsData is IElementsData {
         }
     }
 
-    function getRealUserWeights(address user)
+    /* Public View Functions */
+
+    function getRealUserWeightsAtLevel(address user, uint256 level)
         public
         view
         returns (uint256[] memory elementsWeight, uint256 totalWeight, uint256[] memory elementsUnlocked)
     {
-        elementsUnlocked = getElementsUnlockedByPlayer(user);
+        if (level == 0) {
+            elementsUnlocked = getElementsUnlockedByPlayer(user);
+        } else {
+            if (level > ANTIMATTER_OFFSET) level -= ANTIMATTER_OFFSET;
+            elementsUnlocked = getElementsAtLevel(level);
+        }
+
         uint256 availableElementsLength = elementsUnlocked.length;
 
         elementsWeight = new uint256[](availableElementsLength);
@@ -68,7 +80,12 @@ contract ElementsData is IElementsData {
     }
 
     function getElementsUnlockedByPlayer(address user) public view returns (uint256[] memory) {
-        return elementsUnlockedUnderLevel[usersLevel[user]];
+        uint256 level = usersLevel[user] == 0 ? 1 : usersLevel[user];
+        return elementsUnlockedUnderLevel[level];
+    }
+
+    function getElementsUnlockedUnderLevel(uint256 level) public view returns (uint256[] memory) {
+        return elementsUnlockedUnderLevel[level];
     }
 
     function getElementArtificialRAMWeight(address user, uint256 elementNumber)
@@ -81,5 +98,9 @@ contract ElementsData is IElementsData {
 
         // elementBaseRAM is set in deployer
         artificialRAM = 1e18 / (elementBaseRAM + (numBurnedTimes * 1_000));
+    }
+
+    function getElementsAtLevel(uint256 level) public view returns (uint256[] memory) {
+        return elementsAtLevel[level];
     }
 }

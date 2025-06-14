@@ -27,39 +27,30 @@ contract PECTestContract is PeriodicElementsCollection {
         return requestIdToVRFState[requestId];
     }
 
-    // This function sets all elements artificialRAM to the same value,
-    //  by calculating the required burned amount for each element
-    //  based on the heaviest
-    function setAllEllementsArtificialRamEqual() public {
-        for (uint256 i = 1; i <= 118; i++) {
-            setUserElementBurnedTimes(msg.sender, i, 999999999999706);
-        }
+    function forceMint(address user, uint256[] memory ids, uint256[] memory values) public {
+        _mintBatch(user, ids, values, "");
     }
 
-    // // Assums that all RAMs are equal to 1
-    // function setPredefinedRandomWords(uint256 requestId, uint256[] memory randomWords) public {
-    //     predefinedRandomWordsOfRequestId[requestId] = randomWords;
-    // }
+    function mintAll(address user) public {
+        uint256[] memory elementsUnlocked = getElementsUnlockedByPlayer(user);
+        uint256 length = elementsUnlocked.length;
+        uint256[] memory ids = new uint256[](length);
+        uint256[] memory values = new uint256[](length);
 
-    // function fulfillRandomWords(uint256 requestId, uint256[] calldata randomWords) internal override {
-    //     // pre-logic to implement for tests
-    //     uint256[] memory predefinedRandomWords = predefinedRandomWordsOfRequestId[requestId];
+        // Matter
+        for (uint256 i = 0; i < length; i++) {
+            ids[i] = i + 1;
+            values[i] = 1;
+        }
+        forceMint(user, ids, values);
+        assert(totalSupply() == 118);
 
-    //     if (predefinedRandomWords.length > 0) {
-    //         console.log(
-    //             "predefinedRandomWords.length == randomWords.length :",
-    //             predefinedRandomWords.length == randomWords.length
-    //         );
-    //         require(
-    //             predefinedRandomWords.length == randomWords.length, "Unexpected number of words compared to predefined"
-    //         );
-
-    //         super.fulfillRandomWords(requestId, predefinedRandomWords);
-    //         return;
-    //     }
-    //     super.fulfillRandomWords(requestId, randomWords);
-    // }
-    function test_FulfillRandomWords(uint256 requestId, uint256[] calldata randomWords) external {
-        fulfillRandomWords(requestId, randomWords);
+        // Antimatter
+        for (uint256 i = 0; i < length; i++) {
+            ids[i] = i + 1 + ANTIMATTER_OFFSET;
+            values[i] = 1;
+        }
+        forceMint(user, ids, values);
+        assert(totalSupply() == 236);
     }
 }

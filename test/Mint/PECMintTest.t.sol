@@ -14,16 +14,6 @@ import {FundSubscription} from "script/VRFInteractions.s.sol";
 import {PECBaseTest} from "../PECBaseTest.t.sol";
 
 contract PECMintTest is PECBaseTest {
-    modifier fundSubscriptionMax() {
-        fundSubscription.fundSubscription(config, type(uint256).max - 3 ether);
-        _;
-    }
-
-    modifier setAllEllementsArtificialRamEqual() {
-        pec.setAllEllementsArtificialRamEqual();
-        _;
-    }
-
     function test_fulfillRandomWordsCanOnlyBeCalledAfterRequestId() public {
         vm.expectRevert(VRFCoordinatorV2_5Mock.InvalidRequest.selector);
         VRFCoordinatorV2_5Mock(vrfCoordinator).fulfillRandomWords(0, address(pec));
@@ -113,25 +103,45 @@ contract PECMintTest is PECBaseTest {
         assertEq(pec.totalSupply(), 100);
     }
 
+    function test_shouldNotMintMoreThan500RandomWords(uint32 packsToMint) public fundSubscriptionMax {
+        packsToMint = uint32(bound(packsToMint, 1, type(uint32).max));
+
+        // Go through the process of minting a pack
+        vm.prank(user);
+        uint256 requestId = pec.mintPack{value: PACK_PRICE * packsToMint}();
+        vm.prank(address(vrfCoordinator));
+
+        // After fulfillRandomWords is called, the state contains the amount of words requested
+        vrfCoordinator.fulfillRandomWords(requestId, address(pec));
+        PeriodicElementsCollection.VRFState memory state = pec.getVRFStateFromRequestId(requestId);
+
+        assert(state.randomWords.length > 0 && state.randomWords.length <= 500);
+    }
+
     function test_payForXpacksMints5XElements(uint256 packsToMint) public fundSubscriptionMax {
         packsToMint = bound(packsToMint, 1, NUM_MAX_PACKS_MINTED_AT_ONCE);
 
         vm.prank(user);
         uint256 requestId = pec.mintPack{value: PACK_PRICE * packsToMint}();
-
         vm.prank(address(vrfCoordinator));
         vrfCoordinator.fulfillRandomWords(requestId, address(pec));
 
-        pec.unpackRandomMatter(requestId);
+        (, uint256[] memory values) = pec.unpackRandomMatter(requestId);
 
+        uint256 allValues;
+        for (uint256 i = 0; i < values.length; i++) {
+            allValues += values[i];
+        }
+
+        assertEq(allValues, pec.totalSupply());
         assertEq(pec.totalSupply(), packsToMint * ELEMENTS_IN_PACK);
     }
 
-    function test_matterWorks() public fundSubscriptionMax {
+    function test_mintMatter() public fundSubscriptionMax {
         // Shift to avoid having a modulo of 10k to not mint antimatter
         uint256 matter = 1 << 242;
 
-        (, uint256 totalWeight,) = pec.getRealUserWeights(user);
+        (, uint256 totalWeight,) = pec.getRealUserWeightsAtLevel(user, 0);
         uint256 offset = matter % totalWeight;
 
         uint256[] memory randomWords = new uint256[](5);
@@ -144,23 +154,19 @@ contract PECMintTest is PECBaseTest {
         vm.prank(user);
         uint256 requestId = pec.mintPack{value: PACK_PRICE}();
 
-        vm.prank(address(vrfCoordinator));
         vrfCoordinator.fulfillRandomWordsWithOverride(requestId, address(pec), randomWords);
-        pec.unpackRandomMatter(requestId);
-
-        for (uint256 i = 0; i < 3; i++) {
-            console2.log("Matter", i, pec.balanceOf(user, i));
-        }
-        for (uint256 i = 0; i < 3; i++) {
-            console2.log("Antimatter", i, pec.balanceOf(user, i + ANTIMATTER_OFFSET));
-        }
+        (uint256[] memory ids, uint256[] memory values) = pec.unpackRandomMatter(requestId);
 
         assertEq(pec.balanceOf(user, 1), 3); // 3 Hydrogen
+        assertEq(ids[0], 1);
+        assertEq(values[0], 3);
         assertEq(pec.balanceOf(user, 2), 2); // 2 Helium
+        assertEq(ids[1], 2);
+        assertEq(values[1], 2);
     }
 
     function test_mintAntimatter() public fundSubscriptionMax {
-        (, uint256 totalWeight,) = pec.getRealUserWeights(user);
+        (, uint256 totalWeight,) = pec.getRealUserWeightsAtLevel(user, 0);
 
         uint256[] memory randomWords = new uint256[](5);
         randomWords[0] = 0;
@@ -174,40 +180,72 @@ contract PECMintTest is PECBaseTest {
 
         vm.prank(address(vrfCoordinator));
         vrfCoordinator.fulfillRandomWordsWithOverride(requestId, address(pec), randomWords);
-        pec.unpackRandomMatter(requestId);
+        (uint256[] memory ids, uint256[] memory values) = pec.unpackRandomMatter(requestId);
 
         assertEq(pec.balanceOf(user, ANTIMATTER_OFFSET + 1), 3); // 3 Hydrogen
+        assertEq(ids[0], ANTIMATTER_OFFSET + 1);
+        assertEq(values[0], 3);
         assertEq(pec.balanceOf(user, ANTIMATTER_OFFSET + 2), 2); // 2 Helium
+        assertEq(ids[1], ANTIMATTER_OFFSET + 2);
+        assertEq(values[1], 2);
     }
 
     function test_elementsUnlockedByPlayer() public {
         // By default should be 2 elements
+        pec.setUserLevel(user, 0);
         uint256[] memory elements = pec.getElementsUnlockedByPlayer(user);
         assertEq(elements.length, 2);
 
-        // At level 2 should be 10, etc
         pec.setUserLevel(user, 1);
+        elements = pec.getElementsUnlockedByPlayer(user);
+        assertEq(elements.length, 2);
+
+        // At level 2 should be 10, etc
+        pec.setUserLevel(user, 2);
         elements = pec.getElementsUnlockedByPlayer(user);
         assertEq(elements.length, 10);
 
-        pec.setUserLevel(user, 2);
+        pec.setUserLevel(user, 3);
         elements = pec.getElementsUnlockedByPlayer(user);
         assertEq(elements.length, 18);
 
-        pec.setUserLevel(user, 3);
+        pec.setUserLevel(user, 4);
         elements = pec.getElementsUnlockedByPlayer(user);
         assertEq(elements.length, 36);
 
-        pec.setUserLevel(user, 4);
+        pec.setUserLevel(user, 5);
         elements = pec.getElementsUnlockedByPlayer(user);
         assertEq(elements.length, 54);
 
-        pec.setUserLevel(user, 5);
+        pec.setUserLevel(user, 6);
         elements = pec.getElementsUnlockedByPlayer(user);
         assertEq(elements.length, 86);
 
-        pec.setUserLevel(user, 6);
+        pec.setUserLevel(user, 7);
         elements = pec.getElementsUnlockedByPlayer(user);
         assertEq(elements.length, 118);
+    }
+
+    function test_elementsAtLevel() public view {
+        uint256[] memory elements = pec.getElementsAtLevel(1);
+        assertEq(elements.length, 2);
+
+        elements = pec.getElementsAtLevel(2);
+        assertEq(elements.length, 8);
+
+        elements = pec.getElementsAtLevel(3);
+        assertEq(elements.length, 8);
+
+        elements = pec.getElementsAtLevel(4);
+        assertEq(elements.length, 18);
+
+        elements = pec.getElementsAtLevel(5);
+        assertEq(elements.length, 18);
+
+        elements = pec.getElementsAtLevel(6);
+        assertEq(elements.length, 32);
+
+        elements = pec.getElementsAtLevel(7);
+        assertEq(elements.length, 32);
     }
 }

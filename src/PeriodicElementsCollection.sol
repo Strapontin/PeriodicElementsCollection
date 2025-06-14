@@ -2,7 +2,6 @@
 // Compatible with OpenZeppelin Contracts ^5.0.0
 pragma solidity ^0.8.20;
 
-import {console} from "forge-std/console.sol";
 import {ElementsData} from "./ElementsData.sol";
 import {DarkMatterTokens} from "./DarkMatterTokens.sol";
 
@@ -20,8 +19,11 @@ import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/V
 contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, ElementsData {
     error PEC__NoPackToMint();
     error PEC__EthNotSend();
-    error PEC__VRFNeedCallbackNotReceived();
+    error PEC__NotInReadyToMintState();
     error PEC__RequestIdAlreadyMinted();
+    error PEC__LevelDoesNotExist();
+    error PEC__CantFuseLastLevelOfAntimatter();
+    error PEC__ZeroValue();
 
     enum VRFStatus {
         None,
@@ -34,13 +36,14 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
         address minterAddress;
         uint256[] randomWords;
         VRFStatus status;
+        uint256 levelToMint;
     }
 
     mapping(uint256 => VRFState) public requestIdToVRFState;
 
     string public constant name = "Periodic Elements Collection";
     uint256 public constant ELEMENTS_IN_PACK = 5;
-    uint256 public constant NUM_MAX_PACKS_MINTED_AT_ONCE = 500;
+    uint256 public constant NUM_MAX_PACKS_MINTED_AT_ONCE = 100;
     uint256 public constant PACK_PRICE = 0.002 ether;
 
     // Chainlink Variables
@@ -85,6 +88,19 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
             numWordsToRequest = uint32(NUM_MAX_PACKS_MINTED_AT_ONCE * ELEMENTS_IN_PACK);
         }
 
+        requestId = generateNewVrfRequest(numWordsToRequest, 0);
+
+        uint256 leftOverEth = msg.value - (numPacksPaid * PACK_PRICE);
+        if (leftOverEth != 0) {
+            (bool sent,) = address(msg.sender).call{value: leftOverEth}("");
+            if (!sent) revert PEC__EthNotSend();
+        }
+
+        emit MintRequestInitalized(requestId, msg.sender);
+    }
+
+    // levelToMint = 0 => all available elements
+    function generateNewVrfRequest(uint32 numWordsToRequest, uint256 levelToMint) private returns (uint256 requestId) {
         requestId = s_vrfCoordinator.requestRandomWords(
             VRFV2PlusClient.RandomWordsRequest({
                 keyHash: KEY_HASH,
@@ -98,14 +114,7 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
 
         requestIdToVRFState[requestId].minterAddress = msg.sender;
         requestIdToVRFState[requestId].status = VRFStatus.PendingVRFCallback;
-
-        uint256 leftOverEth = msg.value - (numPacksPaid * PACK_PRICE);
-        if (leftOverEth != 0) {
-            (bool sent,) = address(msg.sender).call{value: leftOverEth}("");
-            if (!sent) revert PEC__EthNotSend();
-        }
-
-        emit MintRequestInitalized(requestId, msg.sender);
+        requestIdToVRFState[requestId].levelToMint = levelToMint;
     }
 
     function mintFreePacks() external {
@@ -113,6 +122,9 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
     }
 
     function _mintFreePacks(address user) internal returns (uint256 numPacksMinted) {
+        // Registers as a player
+        if (usersLevel[user] == 0) usersLevel[user] = 1;
+
         uint256 startOfTheDay = block.timestamp / 1 days * 1 days;
         numPacksMinted = (startOfTheDay / 1 days) - (lastFreeMintFromUsers[msg.sender] / 1 days);
 
@@ -127,34 +139,37 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
         }
 
         uint256[] memory ids = new uint256[](2);
-        uint256[] memory amounts = new uint256[](2);
+        uint256[] memory values = new uint256[](2);
         ids[0] = 1; // Hydrogen
         ids[1] = 2; // Helium
-        amounts[0] = 5 * numPacksMinted;
-        amounts[1] = 5 * numPacksMinted;
+        values[0] = 5 * numPacksMinted;
+        values[1] = 5 * numPacksMinted;
 
         // Mint 5 Hydrogen and 5 Helium to the user for each pack
-        _mintBatch(user, ids, amounts, "");
+        _mintBatch(user, ids, values, "");
     }
 
     function fulfillRandomWords(uint256 requestId, uint256[] calldata randomWords) internal virtual override {
         requestIdToVRFState[requestId].randomWords = randomWords;
         requestIdToVRFState[requestId].status = VRFStatus.ReadyToMint;
+        // emit elementAvailable ?
     }
 
-    function unpackRandomMatter(uint256 requestId) external {
+    function unpackRandomMatter(uint256 requestId) external returns (uint256[] memory ids, uint256[] memory values) {
         VRFState memory vrfState = requestIdToVRFState[requestId];
 
-        if (vrfState.status == VRFStatus.PendingVRFCallback) revert PEC__VRFNeedCallbackNotReceived();
         if (vrfState.status == VRFStatus.Minted) revert PEC__RequestIdAlreadyMinted();
+        if (vrfState.status != VRFStatus.ReadyToMint) revert PEC__NotInReadyToMintState();
         requestIdToVRFState[requestId].status = VRFStatus.Minted;
 
-        uint256[] memory ids = new uint256[](vrfState.randomWords.length);
-        uint256[] memory values = new uint256[](vrfState.randomWords.length);
+        ids = new uint256[](vrfState.randomWords.length);
+        values = new uint256[](vrfState.randomWords.length);
         uint256 uniqueTokenCount = 0;
 
         // Process each randomWord to determine the tokenId and its quantity
-        uint256[] memory tokenIds = pickRandomElementAvailable(vrfState.minterAddress, vrfState.randomWords);
+        uint256[] memory tokenIds = pickRandomElementAvailable(
+            vrfState.minterAddress, vrfState.randomWords, requestIdToVRFState[requestId].levelToMint
+        );
 
         for (uint256 tokenIndex = 0; tokenIndex < tokenIds.length; tokenIndex++) {
             // Check if this tokenId already exists in ids array
@@ -189,9 +204,38 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
         _mintBatch(vrfState.minterAddress, ids, values, "");
     }
 
-    function getElementsUnlockedUnderLevel(uint256 level) public view returns (uint256[] memory) {
-        return elementsUnlockedUnderLevel[level];
+    function fuseToNextLevel(uint256 levelToBurn, uint32 lineAmountToBurn, bool isMatter)
+        external
+        returns (uint256 requestId)
+    {
+        if (lineAmountToBurn == 0) revert PEC__ZeroValue();
+        if (levelToBurn < 1 || levelToBurn > 7) revert PEC__LevelDoesNotExist();
+        if (levelToBurn == 7 && !isMatter) revert PEC__CantFuseLastLevelOfAntimatter();
+
+        uint256 amountElements = elementsAtLevel[levelToBurn].length;
+        uint256 matterOffset = isMatter ? 0 : ANTIMATTER_OFFSET;
+
+        uint256[] memory ids = new uint256[](amountElements);
+        uint256[] memory values = new uint256[](amountElements);
+
+        for (uint256 i = 0; i < amountElements; i++) {
+            ids[i] = elementsAtLevel[levelToBurn][i] + matterOffset;
+            values[i] = lineAmountToBurn;
+        }
+
+        _burnBatch(msg.sender, ids, values);
+
+        // Lvl up if user reaches a new tier
+        if (usersLevel[msg.sender] == levelToBurn && levelToBurn < 7) usersLevel[msg.sender]++;
+
+        uint256 levelToMint = levelToBurn + 1;
+        if (levelToMint == 8) levelToMint = ANTIMATTER_OFFSET + 1;
+
+        // Need to request X new random element from the next level
+        return generateNewVrfRequest(lineAmountToBurn, levelToMint);
     }
+
+    /* Overriden Special cases */
 
     function _update(address from, address to, uint256[] memory ids, uint256[] memory values)
         internal
