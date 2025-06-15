@@ -36,7 +36,7 @@ jobs:
 
       - name: Run make install
         run: |
-          make install
+          make install-git
 
       - name: Run Forge build
         run: |
