@@ -55,7 +55,9 @@ contract PECBaseTest is Test {
 
         vm.deal(user, type(uint128).max);
     }
+}
 
+contract BasicTests is PECBaseTest {
     function test_isAlive() public view {
         (uint256 number, string memory name, string memory symbol, uint256 ram, uint256 level) = pec.elementsData(1);
 
