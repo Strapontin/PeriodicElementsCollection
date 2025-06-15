@@ -43,20 +43,19 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
 
     mapping(uint256 => VRFState) public requestIdToVRFState;
 
-    string public constant name = "Periodic Elements Collection";
     uint256 public constant ELEMENTS_IN_PACK = 5;
     uint256 public constant NUM_MAX_PACKS_MINTED_AT_ONCE = 100;
     uint256 public constant PACK_PRICE = 0.002 ether;
 
     // Chainlink Variables
-    uint256 public immutable subscriptionId;
+    uint256 public immutable SUBSCRIPTION_ID;
     // TODO : put this value in constructor, define it in deployer.s.sol
     bytes32 constant KEY_HASH = 0x474e34a077df58807dbe9c96d3c009b23b3c6d0cce433e59bbf5b34f823bc56c; // 750 gwei Sepolia
     uint32 constant CALLBACK_GAS_LIMIT = 1_000_000_000;
     uint16 constant BLOCK_CONFIRMATIONS = 10;
 
     // Gameplay variables
-    DarkMatterTokens public immutable darkMatterTokens;
+    DarkMatterTokens public darkMatterTokens;
     mapping(address user => uint256 timestampLastFreeMint) lastFreeMintFromUsers;
 
     event MintRequestInitalized(uint256 indexed requestId, address indexed account);
@@ -69,7 +68,7 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
         )
         ERC1155Supply()
     {
-        subscriptionId = _subscriptionId;
+        SUBSCRIPTION_ID = _subscriptionId;
         darkMatterTokens = new DarkMatterTokens();
     }
 
@@ -106,7 +105,7 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
         requestId = s_vrfCoordinator.requestRandomWords(
             VRFV2PlusClient.RandomWordsRequest({
                 keyHash: KEY_HASH,
-                subId: subscriptionId,
+                subId: SUBSCRIPTION_ID,
                 requestConfirmations: BLOCK_CONFIRMATIONS,
                 callbackGasLimit: CALLBACK_GAS_LIMIT,
                 numWords: numWordsToRequest,

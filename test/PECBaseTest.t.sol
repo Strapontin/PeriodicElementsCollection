@@ -46,7 +46,7 @@ contract PECBaseTest is Test {
         fundSubscription = new FundSubscription();
 
         config = helperConfig.getConfig();
-        config.subscriptionId = pec.subscriptionId();
+        config.subscriptionId = pec.SUBSCRIPTION_ID();
 
         vrfCoordinator = VRFCoordinatorV2_5Mock(config.vrfCoordinator);
 
@@ -57,7 +57,6 @@ contract PECBaseTest is Test {
     }
 
     function test_isAlive() public view {
-        assertEq("Periodic Elements Collection", pec.name());
         (uint256 number, string memory name, string memory symbol, uint256 ram, uint256 level) = pec.elementsData(1);
 
         assertEq(1, number);
