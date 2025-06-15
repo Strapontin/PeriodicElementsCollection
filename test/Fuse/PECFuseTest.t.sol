@@ -35,15 +35,12 @@ contract PECFuseTest is PECBaseTest {
         assertEq(pec.usersLevel(user), 2);
         elements = pec.getElementsUnlockedByPlayer(user);
         assertEq(elements.length, 10);
-
-        vm.stopPrank();
     }
 
     function test_fuseNextLevel() public {
         // For this test to succeed:
         //  - user needs to be lvl 7
         //  - user needs to have one elements of each (matter & antimatter)
-        pec.setUserLevel(user, 7);
         pec.mintAll(user);
         vm.startPrank(user);
 
@@ -101,7 +98,6 @@ contract PECFuseTest is PECBaseTest {
             return;
         }
 
-        pec.setUserLevel(user, 7);
         pec.mintAll(user);
         vm.startPrank(user);
 

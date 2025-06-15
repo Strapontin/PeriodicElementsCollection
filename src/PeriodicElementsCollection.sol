@@ -240,7 +240,7 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
 
     // This function burns an amount of elements to make them less likely to drop randomly
     function increaseRelativeAtomicMass(uint256[] memory ids, uint256[] memory values) external {
-        if (ids.length != values.length || ids.length == 0) revert PEC__IncorrectParameters();
+        if (ids.length == 0) revert PEC__IncorrectParameters();
 
         _burnBatch(msg.sender, ids, values);
 

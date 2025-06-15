@@ -9,7 +9,7 @@ contract ElementsData is IElementsData {
     mapping(uint256 elementNumber => ElementDataStruct) public elementsData; // List of elements' datas
     mapping(uint256 level => uint256[]) public elementsAtLevel;
     mapping(uint256 level => uint256[]) public elementsUnlockedUnderLevel;
-    mapping(address user => mapping(uint256 elementNumber => uint256)) burnedTimes;
+    mapping(address user => mapping(uint256 elementNumber => uint256)) public burnedTimes;
     mapping(address user => uint256) public usersLevel;
 
     constructor(ElementDataStruct[] memory datas) {

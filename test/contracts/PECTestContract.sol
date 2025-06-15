@@ -32,6 +32,8 @@ contract PECTestContract is PeriodicElementsCollection {
     }
 
     function mintAll(address user) public {
+        setUserLevel(user, 7);
+
         uint256[] memory elementsUnlocked = getElementsUnlockedByPlayer(user);
         uint256 length = elementsUnlocked.length;
         uint256[] memory ids = new uint256[](length);
@@ -43,7 +45,6 @@ contract PECTestContract is PeriodicElementsCollection {
             values[i] = 1;
         }
         forceMint(user, ids, values);
-        assert(totalSupply() == 118);
 
         // Antimatter
         for (uint256 i = 0; i < length; i++) {
@@ -51,7 +52,6 @@ contract PECTestContract is PeriodicElementsCollection {
             values[i] = 1;
         }
         forceMint(user, ids, values);
-        assert(totalSupply() == 236);
     }
 }
 

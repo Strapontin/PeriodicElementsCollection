@@ -25,6 +25,7 @@ contract PECBaseTest is Test {
 
     address owner;
     address user = makeAddr("user");
+    address user2 = makeAddr("user2");
 
     VRFCoordinatorV2_5Mock vrfCoordinator;
     FundSubscription fundSubscription;
@@ -54,6 +55,7 @@ contract PECBaseTest is Test {
         assertEq(config.account, pec.owner());
 
         vm.deal(user, type(uint128).max);
+        vm.deal(user2, type(uint128).max);
     }
 }
 
