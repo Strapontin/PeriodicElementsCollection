@@ -9,9 +9,25 @@ import {IDarkMatterTokens} from "./interfaces/IDarkMatterTokens.sol";
 /// "strapontin" on discord
 /// https://x.com/0xStrapontin on X
 contract DarkMatterTokens is IDarkMatterTokens, ERC20, Ownable {
-    constructor() ERC20("DarkMatterTokens", "DMT") Ownable(msg.sender) {}
+    error DMT__DelayNotPassedYet();
 
-    function mint(address to, uint256 amount) public onlyOwner {
-        _mint(to, amount);
+    uint256 immutable public delay;
+
+    // Buying DMT is only possible after 14 days
+    modifier delayHasPassed() {
+        if (block.timestamp <= delay) revert DMT__DelayNotPassedYet();
+        _;
+    }
+
+    constructor() ERC20("DarkMatterTokens", "DMT") Ownable(msg.sender) {
+        delay = block.timestamp + 14 days;
+    }
+
+    function burn(address from, uint256 amount) public onlyOwner {
+        _burn(from, amount);
+    }
+
+    function buy() public payable delayHasPassed {
+        _mint(msg.sender, msg.value);
     }
 }

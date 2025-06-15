@@ -20,6 +20,7 @@ contract PECBaseTest is Test {
     uint256 public ANTIMATTER_OFFSET;
 
     PECTestContract pec;
+    DarkMatterTokens dmt;
     HelperConfig helperConfig;
     HelperConfig.NetworkConfig config;
 
@@ -39,6 +40,8 @@ contract PECBaseTest is Test {
         address pecTestContract;
         (pecTestContract, helperConfig) = (new PECDeployer()).deployContract();
         pec = PECTestContract(pecTestContract);
+        dmt = pec.darkMatterTokens();
+
         ELEMENTS_IN_PACK = pec.ELEMENTS_IN_PACK();
         NUM_MAX_PACKS_MINTED_AT_ONCE = pec.NUM_MAX_PACKS_MINTED_AT_ONCE();
         PACK_PRICE = pec.PACK_PRICE();

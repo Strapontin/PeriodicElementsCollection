@@ -26,6 +26,7 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
     error PEC__CantFuseLastLevelOfAntimatter();
     error PEC__ZeroValue();
     error PEC__IncorrectParameters();
+    error PEC__UnauthorizedTransfer();
 
     enum VRFStatus {
         None,
@@ -46,6 +47,7 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
     uint256 public constant ELEMENTS_IN_PACK = 5;
     uint256 public constant NUM_MAX_PACKS_MINTED_AT_ONCE = 100;
     uint256 public constant PACK_PRICE = 0.002 ether;
+    uint256 public constant DMT_FEE_PER_TRANSFER = 0.0005 ether;
 
     // Chainlink Variables
     uint256 public immutable SUBSCRIPTION_ID;
@@ -57,6 +59,14 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
     // Gameplay variables
     DarkMatterTokens public darkMatterTokens;
     mapping(address user => uint256 timestampLastFreeMint) lastFreeMintFromUsers;
+
+    // Amount of an NFT authorized to be received from a transfer of a sender to our user
+    mapping(address receiver => mapping(address sender => mapping(uint256 id => uint256 amount))) public
+        authorizedTransfer;
+    // True if sender is authorized to send any NFT to receiver
+    mapping(address receiver => mapping(address sender => bool)) public authorizedAddressForTransfer;
+
+    mapping(address user => uint256) public amountTransfers; // Level of the user, 0 if not a player
 
     event MintRequestInitalized(uint256 indexed requestId, address indexed account);
 
@@ -254,13 +264,48 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
         }
     }
 
-    /* Overriden Special cases */
+    /* Transfers */
 
     function _update(address from, address to, uint256[] memory ids, uint256[] memory values)
         internal
         override(ERC1155Supply)
     {
+        // Only do these if users are transfering (not minting or burning)
+        if (from != address(0) && to != address(0)) {
+            // A player receiving an NFT must accept the transfer
+            _handlerNftReception(from, to, ids, values);
+
+            // players who send/receive NFTs need to pay DMT fee
+            _payFees(from, to);
+        }
+
         // put the code to run **before** the transfer HERE
         super._update(from, to, ids, values);
+    }
+
+    function _handlerNftReception(address from, address to, uint256[] memory ids, uint256[] memory values) internal {
+        // If the receiver is not a player, the transfer is authorized
+        if (usersLevel[to] == 0) return;
+
+        // If the sender is not authorized to send NFTs to the receiver, revert
+        if (!authorizedAddressForTransfer[to][from]) {
+            for (uint256 i = 0; i < ids.length; i++) {
+                if (authorizedTransfer[to][from][ids[i]] < values[i]) revert PEC__UnauthorizedTransfer();
+                authorizedTransfer[to][from][ids[i]] -= values[i];
+            }
+        }
+    }
+
+    function _payFees(address from, address to) internal {
+        _burnFeeDMT(from);
+        _burnFeeDMT(to);
+    }
+
+    function _burnFeeDMT(address user) internal {
+        // If the user is not a player, no fees to pay
+        if (usersLevel[user] != 0) {
+            // Burn the DMT fee
+            darkMatterTokens.burn(user, DMT_FEE_PER_TRANSFER * ++amountTransfers[user]);
+        }
     }
 }
