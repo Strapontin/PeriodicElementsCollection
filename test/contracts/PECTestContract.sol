@@ -32,6 +32,10 @@ contract PECTestContract is PeriodicElementsCollection {
     }
 
     function mintAll(address user) public {
+        mintAll(user, 1);
+    }
+    
+    function mintAll(address user, uint times) public {
         setUserLevel(user, 7);
 
         uint256[] memory elementsUnlocked = getElementsUnlockedByPlayer(user);
@@ -42,14 +46,14 @@ contract PECTestContract is PeriodicElementsCollection {
         // Matter
         for (uint256 i = 0; i < length; i++) {
             ids[i] = i + 1;
-            values[i] = 1;
+            values[i] = times;
         }
         forceMint(user, ids, values);
 
         // Antimatter
         for (uint256 i = 0; i < length; i++) {
             ids[i] = i + 1 + ANTIMATTER_OFFSET;
-            values[i] = 1;
+            values[i] = times;
         }
         forceMint(user, ids, values);
     }

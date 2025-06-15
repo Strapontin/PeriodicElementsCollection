@@ -103,4 +103,23 @@ contract PECBurnTest is PECBaseTest {
         vm.expectRevert(abi.encodeWithSelector(IERC1155Errors.ERC1155InvalidArrayLength.selector, 2, 1));
         pec.increaseRelativeAtomicMass(ids, values);
     }
+
+    function test_burnHydrogen4TimesMakesItHeavierThanHelium() public {
+        pec.mintAll(user, 5);
+
+        uint256[] memory ids = new uint256[](1);
+        uint256[] memory values = new uint256[](1);
+        ids[0] = 1;
+        values[0] = 1;
+
+        vm.startPrank(user);
+        for (uint256 i = 0; i < 3; i++) {
+            // Before the 4th burn, Helium's RAM is lower than Hydrogen's
+            assertLt(pec.getElementArtificialRAMWeight(user, 2), pec.getElementArtificialRAMWeight(user, 1));
+            pec.increaseRelativeAtomicMass(ids, values);
+        }
+
+        // After the 4th burn, Hydrogen's RAM is higher than Helium's
+        assertGt(pec.getElementArtificialRAMWeight(user, 2), pec.getElementArtificialRAMWeight(user, 1));
+    }
 }
