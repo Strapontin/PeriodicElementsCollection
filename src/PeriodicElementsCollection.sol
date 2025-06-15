@@ -25,6 +25,7 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
     error PEC__LevelDoesNotExist();
     error PEC__CantFuseLastLevelOfAntimatter();
     error PEC__ZeroValue();
+    error PEC__IncorrectParameters();
 
     enum VRFStatus {
         None,
@@ -234,6 +235,24 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
 
         // Need to request X new random element from the next level
         return generateNewVrfRequest(lineAmountToBurn, levelToMint);
+    }
+
+    /* Burn Functions */
+
+    // This function burns an amount of elements to make them less likely to drop randomly
+    function increaseRelativeAtomicMass(uint256[] memory ids, uint256[] memory values) external {
+        if (ids.length != values.length || ids.length == 0) revert PEC__IncorrectParameters();
+
+        _burnBatch(msg.sender, ids, values);
+
+        // Update the RAM of the elements
+        for (uint256 i = 0; i < ids.length; i++) {
+            if (ids[i] > ANTIMATTER_OFFSET) {
+                burnedTimes[msg.sender][ids[i]] += values[i] * 100;
+            } else {
+                burnedTimes[msg.sender][ids[i]] += values[i];
+            }
+        }
     }
 
     /* Overriden Special cases */
