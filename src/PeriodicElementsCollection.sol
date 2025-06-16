@@ -47,7 +47,7 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
     uint256 public constant ELEMENTS_IN_PACK = 5;
     uint256 public constant NUM_MAX_PACKS_MINTED_AT_ONCE = 100;
     uint256 public constant PACK_PRICE = 0.002 ether;
-    uint256 public constant DMT_FEE_PER_TRANSFER = 0.0005 ether;
+    uint256 public constant DMT_FEE_PER_TRANSFER = 0.000_005 ether;
 
     // Chainlink Variables
     uint256 public immutable SUBSCRIPTION_ID;
@@ -265,6 +265,18 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
     }
 
     /* Transfers */
+
+    function addAuthorizeTransfer(address from, uint256 id, uint256 addValue) external {
+        authorizedTransfer[msg.sender][from][id] += addValue;
+    }
+
+    function setAuthorizedAddressForTransfer(address from, bool isAuthorized) external {
+        authorizedAddressForTransfer[msg.sender][from] = isAuthorized;
+    }
+
+    function forceTransferFrom(address from, address to, uint256[] memory ids, uint256[] memory values) external {
+        // TODO
+    }
 
     function _update(address from, address to, uint256[] memory ids, uint256[] memory values)
         internal

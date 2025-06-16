@@ -27,6 +27,10 @@ contract PECTestContract is PeriodicElementsCollection {
         return requestIdToVRFState[requestId];
     }
 
+    function forceMint(address user, uint256 id, uint256 value) public {
+        _mint(user, id, value, "");
+    }
+
     function forceMint(address user, uint256[] memory ids, uint256[] memory values) public {
         _mintBatch(user, ids, values, "");
     }
@@ -34,8 +38,8 @@ contract PECTestContract is PeriodicElementsCollection {
     function mintAll(address user) public {
         mintAll(user, 1);
     }
-    
-    function mintAll(address user, uint times) public {
+
+    function mintAll(address user, uint256 times) public {
         setUserLevel(user, 7);
 
         uint256[] memory elementsUnlocked = getElementsUnlockedByPlayer(user);

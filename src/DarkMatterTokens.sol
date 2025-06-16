@@ -11,7 +11,7 @@ import {IDarkMatterTokens} from "./interfaces/IDarkMatterTokens.sol";
 contract DarkMatterTokens is IDarkMatterTokens, ERC20, Ownable {
     error DMT__DelayNotPassedYet();
 
-    uint256 immutable public delay;
+    uint256 public immutable delay;
 
     // Buying DMT is only possible after 14 days
     modifier delayHasPassed() {

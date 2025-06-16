@@ -18,6 +18,7 @@ contract PECBaseTest is Test {
     uint256 public NUM_MAX_PACKS_MINTED_AT_ONCE;
     uint256 public PACK_PRICE;
     uint256 public ANTIMATTER_OFFSET;
+    uint256 public DMT_FEE_PER_TRANSFER;
 
     PECTestContract pec;
     DarkMatterTokens dmt;
@@ -25,14 +26,19 @@ contract PECBaseTest is Test {
     HelperConfig.NetworkConfig config;
 
     address owner;
-    address user = makeAddr("user");
-    address user2 = makeAddr("user2");
+    address alice = makeAddr("alice");
+    address bob = makeAddr("bob");
 
     VRFCoordinatorV2_5Mock vrfCoordinator;
     FundSubscription fundSubscription;
 
     modifier fundSubscriptionMax() {
         fundSubscription.fundSubscription(config, type(uint256).max - 3 ether);
+        _;
+    }
+
+    modifier dmtMintable() {
+        vm.warp(block.timestamp + 14 days + 1);
         _;
     }
 
@@ -46,6 +52,7 @@ contract PECBaseTest is Test {
         NUM_MAX_PACKS_MINTED_AT_ONCE = pec.NUM_MAX_PACKS_MINTED_AT_ONCE();
         PACK_PRICE = pec.PACK_PRICE();
         ANTIMATTER_OFFSET = pec.ANTIMATTER_OFFSET();
+        DMT_FEE_PER_TRANSFER = pec.DMT_FEE_PER_TRANSFER();
 
         fundSubscription = new FundSubscription();
 
@@ -57,8 +64,15 @@ contract PECBaseTest is Test {
         assert(address(pec) != address(0));
         assertEq(config.account, pec.owner());
 
-        vm.deal(user, type(uint128).max);
-        vm.deal(user2, type(uint128).max);
+        vm.deal(alice, type(uint128).max);
+        vm.deal(bob, type(uint128).max);
+    }
+
+    function buyDmt(address user, uint256 amount) internal {
+        vm.startPrank(user);
+        dmt.buy{value: DMT_FEE_PER_TRANSFER * amount}();
+        pec.mintFreePacks();
+        vm.stopPrank();
     }
 }
 
@@ -73,7 +87,7 @@ contract BasicTests is PECBaseTest {
         assertEq(1, level);
 
         uint256 expectedRAM = 1e18 / ram;
-        assertEq(expectedRAM, pec.getElementArtificialRAMWeight(user, 1));
+        assertEq(expectedRAM, pec.getElementArtificialRAMWeight(alice, 1));
     }
 
     function test_elementsLevelIsCorrect() public view {

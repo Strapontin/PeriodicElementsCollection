@@ -23,7 +23,7 @@ contract PECMintTest is PECBaseTest {
     }
 
     function test_mintingStates() public fundSubscriptionMax {
-        vm.prank(user);
+        vm.prank(alice);
         uint256 requestId = pec.mintPack{value: PACK_PRICE}();
 
         // Status is now Pending for VRF Callback
@@ -52,20 +52,20 @@ contract PECMintTest is PECBaseTest {
 
     function test_refund() public {
         // 1st test, pay 1.5 pack, should pay back 0.5
-        vm.startPrank(user);
+        vm.startPrank(alice);
         pec.mintPack{value: PACK_PRICE + PACK_PRICE / 2}();
 
-        assertEq(type(uint128).max - PACK_PRICE, user.balance);
+        assertEq(type(uint128).max - PACK_PRICE, alice.balance);
 
         // 2nd test, should not pay more than max amount possible
         // Note that it pays back 1 more PACK_PRICE due to previous mintPack
-        pec.mintPack{value: user.balance}();
-        assertEq(type(uint128).max - (PACK_PRICE + PACK_PRICE * NUM_MAX_PACKS_MINTED_AT_ONCE), user.balance);
+        pec.mintPack{value: alice.balance}();
+        assertEq(type(uint128).max - (PACK_PRICE + PACK_PRICE * NUM_MAX_PACKS_MINTED_AT_ONCE), alice.balance);
     }
 
     function test_mintFreePacksShouldMint5HeliumAndHydrogen() public {
         vm.warp(block.timestamp + 1e18);
-        vm.startPrank(user);
+        vm.startPrank(alice);
         pec.mintFreePacks();
 
         assertEq(pec.totalSupply(), 70);
@@ -73,7 +73,7 @@ contract PECMintTest is PECBaseTest {
 
     function test_mintFreeTwiceShouldNotGiveMore() public {
         vm.warp(block.timestamp + 1e18);
-        vm.startPrank(user);
+        vm.startPrank(alice);
         pec.mintFreePacks();
 
         vm.expectRevert(PeriodicElementsCollection.PEC__NoPackToMint.selector);
@@ -84,7 +84,7 @@ contract PECMintTest is PECBaseTest {
 
     function test_mintFreeEveryDayShouldGive1Pack() public {
         vm.warp(block.timestamp + 1e18);
-        vm.startPrank(user);
+        vm.startPrank(alice);
         pec.mintFreePacks();
 
         vm.warp(block.timestamp + 1 days);
@@ -107,7 +107,7 @@ contract PECMintTest is PECBaseTest {
         packsToMint = uint32(bound(packsToMint, 1, type(uint32).max));
 
         // Go through the process of minting a pack
-        vm.prank(user);
+        vm.prank(alice);
         uint256 requestId = pec.mintPack{value: PACK_PRICE * packsToMint}();
         vm.prank(address(vrfCoordinator));
 
@@ -121,7 +121,7 @@ contract PECMintTest is PECBaseTest {
     function test_payForXpacksMints5XElements(uint256 packsToMint) public fundSubscriptionMax {
         packsToMint = bound(packsToMint, 1, NUM_MAX_PACKS_MINTED_AT_ONCE);
 
-        vm.prank(user);
+        vm.prank(alice);
         uint256 requestId = pec.mintPack{value: PACK_PRICE * packsToMint}();
         vm.prank(address(vrfCoordinator));
         vrfCoordinator.fulfillRandomWords(requestId, address(pec));
@@ -141,7 +141,7 @@ contract PECMintTest is PECBaseTest {
         // Shift to avoid having a modulo of 10k to not mint antimatter
         uint256 matter = 1 << 242;
 
-        (, uint256 totalWeight,) = pec.getRealUserWeightsAtLevel(user, 0);
+        (, uint256 totalWeight,) = pec.getRealUserWeightsAtLevel(alice, 0);
         uint256 offset = matter % totalWeight;
 
         uint256[] memory randomWords = new uint256[](5);
@@ -151,22 +151,22 @@ contract PECMintTest is PECBaseTest {
         randomWords[3] = matter;
         randomWords[4] = matter;
 
-        vm.prank(user);
+        vm.prank(alice);
         uint256 requestId = pec.mintPack{value: PACK_PRICE}();
 
         vrfCoordinator.fulfillRandomWordsWithOverride(requestId, address(pec), randomWords);
         (uint256[] memory ids, uint256[] memory values) = pec.unpackRandomMatter(requestId);
 
-        assertEq(pec.balanceOf(user, 1), 3); // 3 Hydrogen
+        assertEq(pec.balanceOf(alice, 1), 3); // 3 Hydrogen
         assertEq(ids[0], 1);
         assertEq(values[0], 3);
-        assertEq(pec.balanceOf(user, 2), 2); // 2 Helium
+        assertEq(pec.balanceOf(alice, 2), 2); // 2 Helium
         assertEq(ids[1], 2);
         assertEq(values[1], 2);
     }
 
     function test_mintAntimatter() public fundSubscriptionMax {
-        (, uint256 totalWeight,) = pec.getRealUserWeightsAtLevel(user, 0);
+        (, uint256 totalWeight,) = pec.getRealUserWeightsAtLevel(alice, 0);
 
         uint256[] memory randomWords = new uint256[](5);
         randomWords[0] = 0;
@@ -175,54 +175,54 @@ contract PECMintTest is PECBaseTest {
         randomWords[3] = 0;
         randomWords[4] = 0;
 
-        vm.prank(user);
+        vm.prank(alice);
         uint256 requestId = pec.mintPack{value: PACK_PRICE}();
 
         vm.prank(address(vrfCoordinator));
         vrfCoordinator.fulfillRandomWordsWithOverride(requestId, address(pec), randomWords);
         (uint256[] memory ids, uint256[] memory values) = pec.unpackRandomMatter(requestId);
 
-        assertEq(pec.balanceOf(user, ANTIMATTER_OFFSET + 1), 3); // 3 Hydrogen
+        assertEq(pec.balanceOf(alice, ANTIMATTER_OFFSET + 1), 3); // 3 Hydrogen
         assertEq(ids[0], ANTIMATTER_OFFSET + 1);
         assertEq(values[0], 3);
-        assertEq(pec.balanceOf(user, ANTIMATTER_OFFSET + 2), 2); // 2 Helium
+        assertEq(pec.balanceOf(alice, ANTIMATTER_OFFSET + 2), 2); // 2 Helium
         assertEq(ids[1], ANTIMATTER_OFFSET + 2);
         assertEq(values[1], 2);
     }
 
     function test_elementsUnlockedByPlayer() public {
         // By default should be 2 elements
-        pec.setUserLevel(user, 0);
-        uint256[] memory elements = pec.getElementsUnlockedByPlayer(user);
+        pec.setUserLevel(alice, 0);
+        uint256[] memory elements = pec.getElementsUnlockedByPlayer(alice);
         assertEq(elements.length, 2);
 
-        pec.setUserLevel(user, 1);
-        elements = pec.getElementsUnlockedByPlayer(user);
+        pec.setUserLevel(alice, 1);
+        elements = pec.getElementsUnlockedByPlayer(alice);
         assertEq(elements.length, 2);
 
         // At level 2 should be 10, etc
-        pec.setUserLevel(user, 2);
-        elements = pec.getElementsUnlockedByPlayer(user);
+        pec.setUserLevel(alice, 2);
+        elements = pec.getElementsUnlockedByPlayer(alice);
         assertEq(elements.length, 10);
 
-        pec.setUserLevel(user, 3);
-        elements = pec.getElementsUnlockedByPlayer(user);
+        pec.setUserLevel(alice, 3);
+        elements = pec.getElementsUnlockedByPlayer(alice);
         assertEq(elements.length, 18);
 
-        pec.setUserLevel(user, 4);
-        elements = pec.getElementsUnlockedByPlayer(user);
+        pec.setUserLevel(alice, 4);
+        elements = pec.getElementsUnlockedByPlayer(alice);
         assertEq(elements.length, 36);
 
-        pec.setUserLevel(user, 5);
-        elements = pec.getElementsUnlockedByPlayer(user);
+        pec.setUserLevel(alice, 5);
+        elements = pec.getElementsUnlockedByPlayer(alice);
         assertEq(elements.length, 54);
 
-        pec.setUserLevel(user, 6);
-        elements = pec.getElementsUnlockedByPlayer(user);
+        pec.setUserLevel(alice, 6);
+        elements = pec.getElementsUnlockedByPlayer(alice);
         assertEq(elements.length, 86);
 
-        pec.setUserLevel(user, 7);
-        elements = pec.getElementsUnlockedByPlayer(user);
+        pec.setUserLevel(alice, 7);
+        elements = pec.getElementsUnlockedByPlayer(alice);
         assertEq(elements.length, 118);
     }
 
@@ -252,13 +252,13 @@ contract PECMintTest is PECBaseTest {
     function test_cantMintWithoutPaying(uint256 price) public {
         price = bound(price, 0, PACK_PRICE - 1);
 
-        vm.startPrank(user);
+        vm.startPrank(alice);
         vm.expectRevert(PeriodicElementsCollection.PEC__UserDidNotPayEnough.selector);
         pec.mintPack{value: price}();
     }
 
     function test_cantUnpackIfNotStatusReadyToMint() public fundSubscriptionMax {
-        vm.startPrank(user);
+        vm.startPrank(alice);
 
         uint256 requestId = 0;
 
