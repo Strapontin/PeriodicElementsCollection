@@ -142,7 +142,7 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
         // If no free packs available and not enough ether send, revert
         if (numPacksMinted == 0) return 0;
 
-        lastFreeMintFromUsers[msg.sender] = block.timestamp; // TODO Maybe it should be `startOfTheDay`, because else user can mint once evey 2 days ?
+        lastFreeMintFromUsers[msg.sender] = startOfTheDay;
 
         // Max 7 days free minting
         if (numPacksMinted > 7) {
@@ -274,10 +274,6 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
         authorizedAddressForTransfer[msg.sender][from] = isAuthorized;
     }
 
-    function forceTransferFrom(address from, address to, uint256[] memory ids, uint256[] memory values) external {
-        // TODO
-    }
-
     function _update(address from, address to, uint256[] memory ids, uint256[] memory values)
         internal
         override(ERC1155Supply)
@@ -288,7 +284,7 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
             _handlerNftReception(from, to, ids, values);
 
             // players who send/receive NFTs need to pay DMT fee
-            _payFees(from, to);
+            _payFees(from, to, values);
         }
 
         // put the code to run **before** the transfer HERE
@@ -308,16 +304,29 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
         }
     }
 
-    function _payFees(address from, address to) internal {
-        _burnFeeDMT(from);
-        _burnFeeDMT(to);
+    function _payFees(address from, address to, uint256[] memory values) internal {
+        _burnFeeDMT(from, values);
+        _burnFeeDMT(to, values);
     }
 
-    function _burnFeeDMT(address user) internal {
+    function _burnFeeDMT(address user, uint256[] memory values) internal {
         // If the user is not a player, no fees to pay
         if (usersLevel[user] != 0) {
-            // Burn the DMT fee
-            darkMatterTokens.burn(user, DMT_FEE_PER_TRANSFER * ++amountTransfers[user]);
+            uint256 start = amountTransfers[user];
+            uint256 end = start;
+
+            // Calculates the amount of DMT to burn based on current user's transfer and amount of values to send
+            for (uint256 i = 0; i < values.length; i++) {
+                end += values[i];
+            }
+
+            // Calculate sum of arithmetic sequence from start+1 to end
+            uint256 n = end - start;
+            uint256 amountToBurn = n * (start + 1 + end) / 2;
+
+            // Update the user's transfer count and burn the fees
+            amountTransfers[user] = end;
+            darkMatterTokens.burn(user, DMT_FEE_PER_TRANSFER * amountToBurn);
         }
     }
 }

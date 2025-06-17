@@ -28,7 +28,7 @@ install-git :;
 # Update Dependencies
 update:; forge update
 
-build:; forge build
+build:; forge build --sizes src/
 
 test :; forge test 
 

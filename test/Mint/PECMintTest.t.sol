@@ -295,4 +295,20 @@ contract PECMintTest is PECBaseTest {
         vm.expectRevert(PeriodicElementsCollection.PEC__EthNotSend.selector);
         pec.mintPack{value: PACK_PRICE + 1}();
     }
+
+    function test_mintAccross2DaysAllow2Mint() public {
+        vm.warp(block.timestamp + 1 days + 23 hours);
+
+        vm.startPrank(alice);
+
+        // Minting a free pack just before 2 days gives one pack
+        pec.mintFreePacks();
+        assertEq(pec.balanceOf(alice, 1), 5);
+
+        vm.warp(block.timestamp + 2 hours);
+
+        // Minting a free pack again 2 hours later gives another pack
+        pec.mintFreePacks();
+        assertEq(pec.balanceOf(alice, 1), 10);
+    }
 }

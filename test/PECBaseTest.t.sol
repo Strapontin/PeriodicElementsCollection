@@ -70,7 +70,7 @@ contract PECBaseTest is Test {
 
     function buyDmt(address user, uint256 amount) internal {
         vm.startPrank(user);
-        dmt.buy{value: DMT_FEE_PER_TRANSFER * amount}();
+        dmt.buy{value: amount}();
         pec.mintFreePacks();
         vm.stopPrank();
     }
