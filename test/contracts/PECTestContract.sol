@@ -15,12 +15,12 @@ contract PECTestContract is PeriodicElementsCollection {
         usersLevel[user] = level;
     }
 
-    function getUserLevel(address user) public view returns (uint256) {
-        return usersLevel[user];
-    }
-
     function setUserElementBurnedTimes(address user, uint256 elementNumber, uint256 numBurnedTimes) public {
         burnedTimes[user][elementNumber] = numBurnedTimes;
+    }
+
+    function setAmountTransfers(address user, uint256 value) public {
+        amountTransfers[user] = value;
     }
 
     function getVRFStateFromRequestId(uint256 requestId) public view returns (VRFState memory) {

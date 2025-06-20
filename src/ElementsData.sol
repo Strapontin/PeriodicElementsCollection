@@ -12,6 +12,9 @@ contract ElementsData is IElementsData {
     mapping(address user => mapping(uint256 elementNumber => uint256)) public burnedTimes;
     mapping(address user => uint256) public usersLevel;
 
+    uint256 public totalUniversesCreated;
+    mapping(address user => uint256) public universesCreated;
+
     constructor(ElementDataStruct[] memory datas) {
         for (uint256 i = 0; i < datas.length; i++) {
             elementsData[datas[i].number] = datas[i];
@@ -65,6 +68,7 @@ contract ElementsData is IElementsData {
         if (level == 0) {
             elementsUnlocked = getElementsUnlockedByPlayer(user);
         } else {
+            // If the level is provided, we are going to mint random elements of this level
             if (level > ANTIMATTER_OFFSET) level -= ANTIMATTER_OFFSET;
             elementsUnlocked = getElementsAtLevel(level);
         }
@@ -97,7 +101,7 @@ contract ElementsData is IElementsData {
         uint256 numBurnedTimes = burnedTimes[user][elementNumber];
 
         // elementBaseRAM is set in deployer
-        artificialRAM = 1e18 / (elementBaseRAM + (numBurnedTimes * 1_000));
+        artificialRAM = 1e18 / (elementBaseRAM + (numBurnedTimes * 100));
     }
 
     function getElementsAtLevel(uint256 level) public view returns (uint256[] memory) {

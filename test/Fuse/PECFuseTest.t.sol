@@ -114,4 +114,20 @@ contract PECFuseTest is PECBaseTest {
         assertEq(ids.length, 1);
         assertEq(values.length, 1);
     }
+
+    function test_fuseMatterLvl7ShouldGiveAntimatterLvl1() public fundSubscriptionMax {
+        pec.mintAll(alice);
+        vm.startPrank(alice);
+
+        uint256 requestId = pec.fuseToNextLevel(7, 1, true);
+        uint256[] memory randomWords = new uint256[](1);
+        randomWords[0] = 1; // 1st element minted
+
+        vrfCoordinator.fulfillRandomWordsWithOverride(requestId, address(pec), randomWords);
+        (uint256[] memory ids,) = pec.unpackRandomMatter(requestId);
+
+        assertEq(ids.length, 1);
+        assertEq(ids[0], 1 + ANTIMATTER_OFFSET); // Should be antimatter lvl 1
+        console2.log("Minted antimatter element:", ids[0]);
+    }
 }

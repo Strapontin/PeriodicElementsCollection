@@ -253,7 +253,9 @@ contract PECMintTest is PECBaseTest {
         price = bound(price, 0, PACK_PRICE - 1);
 
         vm.startPrank(alice);
-        vm.expectRevert(PeriodicElementsCollection.PEC__UserDidNotPayEnough.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(PeriodicElementsCollection.PEC__UserDidNotPayEnough.selector, PACK_PRICE - price)
+        );
         pec.mintPack{value: price}();
     }
 
@@ -264,7 +266,12 @@ contract PECMintTest is PECBaseTest {
 
         // Status == None
         assert(pec.getVRFStateFromRequestId(requestId).status == PeriodicElementsCollection.VRFStatus.None);
-        vm.expectRevert(PeriodicElementsCollection.PEC__NotInReadyToMintState.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                PeriodicElementsCollection.PEC__NotInReadyToMintState.selector,
+                PeriodicElementsCollection.VRFStatus.None
+            )
+        );
         pec.unpackRandomMatter(requestId);
 
         // Status == PendingVRFCallback
@@ -272,7 +279,12 @@ contract PECMintTest is PECBaseTest {
         assert(
             pec.getVRFStateFromRequestId(requestId).status == PeriodicElementsCollection.VRFStatus.PendingVRFCallback
         );
-        vm.expectRevert(PeriodicElementsCollection.PEC__NotInReadyToMintState.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                PeriodicElementsCollection.PEC__NotInReadyToMintState.selector,
+                PeriodicElementsCollection.VRFStatus.PendingVRFCallback
+            )
+        );
         pec.unpackRandomMatter(requestId);
 
         // Status == Minted

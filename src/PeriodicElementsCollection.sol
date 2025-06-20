@@ -18,15 +18,16 @@ import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/V
 /// https://x.com/0xStrapontin on X
 contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, ElementsData {
     error PEC__NoPackToMint();
-    error PEC__UserDidNotPayEnough();
+    error PEC__UserDidNotPayEnough(uint256 amountMissing);
     error PEC__EthNotSend();
-    error PEC__NotInReadyToMintState();
+    error PEC__NotInReadyToMintState(VRFStatus currentStatus);
     error PEC__RequestIdAlreadyMinted();
     error PEC__LevelDoesNotExist();
     error PEC__CantFuseLastLevelOfAntimatter();
     error PEC__ZeroValue();
     error PEC__IncorrectParameters();
     error PEC__UnauthorizedTransfer();
+    error PEC__UserDoesNotHaveAllElementsToCallBigBang(uint256 level);
 
     enum VRFStatus {
         None,
@@ -48,6 +49,7 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
     uint256 public constant NUM_MAX_PACKS_MINTED_AT_ONCE = 100;
     uint256 public constant PACK_PRICE = 0.002 ether;
     uint256 public constant DMT_FEE_PER_TRANSFER = 0.000_005 ether;
+    uint256 public constant DMT_PRICE_INCREASE_PER_UNIVERSE = 0.01 ether;
 
     // Chainlink Variables
     uint256 public immutable SUBSCRIPTION_ID;
@@ -66,7 +68,8 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
     // True if sender is authorized to send any NFT to receiver
     mapping(address receiver => mapping(address sender => bool)) public authorizedAddressForTransfer;
 
-    mapping(address user => uint256) public amountTransfers; // Level of the user, 0 if not a player
+    // Amount of transfers made by a user. Determines the DMT fee when transfering
+    mapping(address user => uint256) public amountTransfers;
 
     event MintRequestInitalized(uint256 indexed requestId, address indexed account);
 
@@ -79,7 +82,7 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
         ERC1155Supply()
     {
         SUBSCRIPTION_ID = _subscriptionId;
-        darkMatterTokens = new DarkMatterTokens();
+        darkMatterTokens = new DarkMatterTokens(this);
     }
 
     // function setURI(string memory newuri) public onlyOwner {
@@ -88,7 +91,7 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
 
     function mintPack() public payable returns (uint256 requestId) {
         // If no free packs available and not enough ether send, revert
-        if (msg.value < PACK_PRICE) revert PEC__UserDidNotPayEnough();
+        if (msg.value < PACK_PRICE) revert PEC__UserDidNotPayEnough(PACK_PRICE - msg.value);
 
         uint256 numPacksPaid = msg.value / PACK_PRICE;
         uint32 numWordsToRequest = uint32(numPacksPaid * ELEMENTS_IN_PACK);
@@ -170,7 +173,7 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
         VRFState memory vrfState = requestIdToVRFState[requestId];
 
         if (vrfState.status == VRFStatus.Minted) revert PEC__RequestIdAlreadyMinted();
-        if (vrfState.status != VRFStatus.ReadyToMint) revert PEC__NotInReadyToMintState();
+        if (vrfState.status != VRFStatus.ReadyToMint) revert PEC__NotInReadyToMintState(vrfState.status);
         requestIdToVRFState[requestId].status = VRFStatus.Minted;
 
         ids = new uint256[](vrfState.randomWords.length);
@@ -254,12 +257,16 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
 
         _burnBatch(msg.sender, ids, values);
 
+        // Increase by 1 to burn the correct amount
+        uint256 userUniversesCreated = universesCreated[msg.sender] + 1;
+
         // Update the RAM of the elements
         for (uint256 i = 0; i < ids.length; i++) {
             if (ids[i] > ANTIMATTER_OFFSET) {
-                burnedTimes[msg.sender][ids[i]] += values[i] * 100;
+                // Burning an antimatter increase RAM by 100
+                burnedTimes[msg.sender][ids[i]] += values[i] * 100 * userUniversesCreated;
             } else {
-                burnedTimes[msg.sender][ids[i]] += values[i];
+                burnedTimes[msg.sender][ids[i]] += values[i] * userUniversesCreated;
             }
         }
     }
@@ -328,5 +335,45 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
             amountTransfers[user] = end;
             darkMatterTokens.burn(user, DMT_FEE_PER_TRANSFER * amountToBurn);
         }
+    }
+
+    /* End the game */
+
+    function bigBang(address user) public {
+        uint256[] memory allElements = elementsUnlockedUnderLevel[7];
+        uint256[] memory idsToBurn = new uint256[](allElements.length * 2);
+        uint256[] memory valuesToBurn = new uint256[](allElements.length * 2);
+
+        // Verifies the user owns at least one of each element
+        for (uint256 i = 0; i < allElements.length; i++) {
+            // Matter
+            idsToBurn[i] = allElements[i];
+            valuesToBurn[i] = balanceOf(user, allElements[i]);
+            burnedTimes[user][allElements[i]] = 0;
+
+            if (valuesToBurn[i] == 0) {
+                revert PEC__UserDoesNotHaveAllElementsToCallBigBang(allElements[i]);
+            }
+
+            // Antimatter
+            idsToBurn[i + allElements.length] = allElements[i] + ANTIMATTER_OFFSET;
+            valuesToBurn[i + allElements.length] = balanceOf(user, allElements[i] + ANTIMATTER_OFFSET);
+            burnedTimes[user][allElements[i] + ANTIMATTER_OFFSET] = 0;
+
+            if (valuesToBurn[i + allElements.length] == 0) {
+                revert PEC__UserDoesNotHaveAllElementsToCallBigBang(allElements[i] + ANTIMATTER_OFFSET);
+            }
+        }
+
+        // Burns all elements, and reset the player's level and transfers
+        _burnBatch(user, idsToBurn, valuesToBurn);
+        usersLevel[user] = 1;
+        amountTransfers[user] = 0;
+
+        // Earns a 1 point increase in burning
+        universesCreated[user]++;
+
+        // Increase DMT price for other users
+        totalUniversesCreated++;
     }
 }

@@ -215,4 +215,11 @@ contract PECTransfersTest is PECBaseTest {
         assertEq(dmt.balanceOf(alice), 0);
         assertEq(dmt.balanceOf(bob), 0);
     }
+
+    function test_buyDmtRevertsWhenNotEnoughEtherSent(uint256 value) public dmtMintable {
+        value = bound(value, 0, DMT_FEE_PER_TRANSFER - 1);
+
+        vm.expectRevert(DarkMatterTokens.DMT__NotEnoughEtherSent.selector);
+        dmt.buy{value: value}();
+    }
 }

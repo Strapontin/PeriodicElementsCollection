@@ -42,6 +42,8 @@ anvil :; anvil -m 'test test test test test test test test test test test junk' 
 
 lcov :; forge coverage --report lcov
 
+coverage :; forge coverage
+
 # NETWORK_ARGS := --rpc-url http://localhost:8545 --private-key $(DEFAULT_ANVIL_KEY) --broadcast
 
 # ifeq ($(findstring --network sepolia,$(ARGS)),--network sepolia)
