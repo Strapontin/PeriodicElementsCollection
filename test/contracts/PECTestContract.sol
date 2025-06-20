@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {console} from "forge-std/console.sol";
-import {PeriodicElementsCollection} from "../../src/PeriodicElementsCollection.sol";
+import {PeriodicElementsCollection} from "src/PeriodicElementsCollection.sol";
 
 contract PECTestContract is PeriodicElementsCollection {
     mapping(uint256 requestId => uint256[] words) predefinedRandomWordsOfRequestId;
