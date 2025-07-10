@@ -16,10 +16,10 @@ contract PECDeployer is Script {
     uint256 public constant LOCAL_CHAIN_ID = 31337;
 
     function run() public {
-        deployContract();
+        deployContract(address(0));
     }
 
-    function deployContract() public returns (address, HelperConfig) {
+    function deployContract(address _feeReceiver) public returns (address, HelperConfig) {
         HelperConfig helperConfig = new HelperConfig();
         HelperConfig.NetworkConfig memory config = helperConfig.getConfig();
 
@@ -40,10 +40,12 @@ contract PECDeployer is Script {
         // If we're on the anvil network, deploy the test contract
         if (block.chainid == LOCAL_CHAIN_ID) {
             periodicElementsCollection =
-                address(new PECTestContract(config.subscriptionId, config.vrfCoordinator, getElementsData()));
+                address(new PECTestContract(config.subscriptionId, config.vrfCoordinator, getElementsData(), _feeReceiver));
         } else {
+            address feeReceiver = msg.sender; // TODO: Change this to a specific fee receiver 
+
             periodicElementsCollection =
-                address(new PeriodicElementsCollection(config.subscriptionId, config.vrfCoordinator, getElementsData()));
+                address(new PeriodicElementsCollection(config.subscriptionId, config.vrfCoordinator, getElementsData(), feeReceiver));
         }
         vm.stopBroadcast();
 

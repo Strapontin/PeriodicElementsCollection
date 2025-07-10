@@ -86,7 +86,7 @@ Antimatter is a rarer version of matter. Minting a paid pack may pop an antimatt
 
 When a player has 1 or more copy of ALL elements (both matter and antimatter), they can call the function `bigBang` to win the game. 
 
-They will lose ALL their elements, get a share of the pool depending of packs they bought (**TODO** SPECIFY), their fusing level goes back to lvl 1, burned tokens count goes back to 0 and they earn a 1 point increase in future burning to decrease chances of minting a burned token (see burning mechanics). The price of DMT increase by 0.01 ether for all users but the current caller of `bigBang`.
+They will lose ALL their elements, get a share of the pool depending of packs they bought (**TODO** SPECIFY), their fusing level goes back to lvl 1, burned tokens count goes back to 0 and they earn a 1 point increase in future burning to decrease chances of minting a burned token (see burning mechanics). The price of DMT increase by 0.01 ether for all users but the current caller of `bigBang`. The amount of DMT they hold stays unchanged.
 
 ## Pool, shares, and passive earning
 
@@ -95,6 +95,8 @@ Buying pack gives shares from the pool
 Buying DMT adds funds to the pool
 
 When Big bang, price of DMT increases, except for the user triggering it
+
+Users earn a fixed amount of shares when they buy a pack. The potential rewards earned from ending the game increase in size when users buy packs, and when anyone buys DMT. When other users buy packs, this decreases the potential rewards earned for a user, but this will never go under the amount of shares held. Thus, shares held are expected to mostly increase in value.
 
 ## Refill the VRF subscription
 

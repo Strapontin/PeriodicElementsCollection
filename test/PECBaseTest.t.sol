@@ -3,6 +3,8 @@ pragma solidity ^0.8.20;
 
 import {PeriodicElementsCollection} from "src/PeriodicElementsCollection.sol";
 import {DarkMatterTokens} from "src/DarkMatterTokens.sol";
+import {PrizePool} from "src/PrizePool.sol";
+import {WithdrawalPool} from "src/WithdrawalPool.sol";
 import {ElementsData} from "src/ElementsData.sol";
 import {HelperConfig} from "script/HelperConfig.s.sol";
 import {PECDeployer} from "script/PECDeployer.s.sol";
@@ -22,12 +24,16 @@ contract PECBaseTest is Test {
 
     PECTestContract pec;
     DarkMatterTokens dmt;
+    PrizePool prizePool;
+    WithdrawalPool withdrawalPool;
+
     HelperConfig helperConfig;
     HelperConfig.NetworkConfig config;
 
     address owner;
     address alice = makeAddr("alice");
     address bob = makeAddr("bob");
+    address feeReceiver = makeAddr("feeReceiver");
 
     VRFCoordinatorV2_5Mock vrfCoordinator;
     FundSubscription fundSubscription;
@@ -44,9 +50,11 @@ contract PECBaseTest is Test {
 
     function setUp() public {
         address pecTestContract;
-        (pecTestContract, helperConfig) = (new PECDeployer()).deployContract();
+        (pecTestContract, helperConfig) = (new PECDeployer()).deployContract(feeReceiver);
         pec = PECTestContract(pecTestContract);
         dmt = pec.darkMatterTokens();
+        prizePool = pec.prizePool();
+        withdrawalPool = prizePool.withdrawalPool();
 
         ELEMENTS_IN_PACK = pec.ELEMENTS_IN_PACK();
         NUM_MAX_PACKS_MINTED_AT_ONCE = pec.NUM_MAX_PACKS_MINTED_AT_ONCE();
@@ -116,6 +124,6 @@ contract BasicTests is PECBaseTest {
         eds[5] = IElementsData.ElementDataStruct({number: 6, name: "", symbol: "", initialRAM: 0, level: 6});
         eds[6] = IElementsData.ElementDataStruct({number: 7, name: "", symbol: "", initialRAM: 0, level: 7});
 
-        new PeriodicElementsCollection(0, address(this), eds);
+        new PeriodicElementsCollection(0, address(this), eds, msg.sender);
     }
 }

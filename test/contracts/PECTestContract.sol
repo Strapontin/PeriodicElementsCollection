@@ -3,13 +3,17 @@ pragma solidity ^0.8.20;
 
 import {console} from "forge-std/console.sol";
 import {PeriodicElementsCollection} from "src/PeriodicElementsCollection.sol";
+import {IERC1155Receiver} from "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
 
 contract PECTestContract is PeriodicElementsCollection {
     mapping(uint256 requestId => uint256[] words) predefinedRandomWordsOfRequestId;
 
-    constructor(uint256 _subscriptionId, address _vrfCoordinatorV2Address, ElementDataStruct[] memory datas)
-        PeriodicElementsCollection(_subscriptionId, _vrfCoordinatorV2Address, datas)
-    {}
+    constructor(
+        uint256 _subscriptionId,
+        address _vrfCoordinatorV2Address,
+        ElementDataStruct[] memory datas,
+        address feeReceiver
+    ) PeriodicElementsCollection(_subscriptionId, _vrfCoordinatorV2Address, datas, feeReceiver) {}
 
     function setUserLevel(address user, uint256 level) public {
         usersLevel[user] = level;
@@ -63,4 +67,16 @@ contract PECTestContract is PeriodicElementsCollection {
     }
 }
 
-contract RevertOnReceive {}
+contract RevertOnReceive {
+    // function onERC1155Received(address, address, uint256, uint256, bytes calldata) external pure returns (bytes4) {
+    //     return IERC1155Receiver.onERC1155Received.selector;
+    // }
+
+    function onERC1155BatchReceived(address, address, uint256[] calldata, uint256[] calldata, bytes calldata)
+        external
+        pure
+        returns (bytes4)
+    {
+        return IERC1155Receiver.onERC1155BatchReceived.selector;
+    }
+}

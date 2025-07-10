@@ -4,9 +4,9 @@ pragma solidity ^0.8.20;
 
 import {ElementsData} from "./ElementsData.sol";
 import {DarkMatterTokens} from "./DarkMatterTokens.sol";
+import {PrizePool} from "./PrizePool.sol";
 
 import {ERC1155} from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
-import {ERC1155Burnable} from "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol";
 import {ERC1155Supply} from "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
 
 //Chainlink VRF imports
@@ -60,6 +60,7 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
 
     // Gameplay variables
     DarkMatterTokens public darkMatterTokens;
+    PrizePool public prizePool;
     mapping(address user => uint256 timestampLastFreeMint) lastFreeMintFromUsers;
 
     // Amount of an NFT authorized to be received from a transfer of a sender to our user
@@ -73,7 +74,12 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
 
     event MintRequestInitalized(uint256 indexed requestId, address indexed account);
 
-    constructor(uint256 _subscriptionId, address _vrfCoordinatorV2Address, ElementDataStruct[] memory datas)
+    constructor(
+        uint256 _subscriptionId,
+        address _vrfCoordinatorV2Address,
+        ElementDataStruct[] memory datas,
+        address feesReceiver
+    )
         VRFConsumerBaseV2Plus(_vrfCoordinatorV2Address)
         ElementsData(datas)
         ERC1155(
@@ -83,6 +89,7 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
     {
         SUBSCRIPTION_ID = _subscriptionId;
         darkMatterTokens = new DarkMatterTokens(this);
+        prizePool = new PrizePool(feesReceiver);
     }
 
     // function setURI(string memory newuri) public onlyOwner {
@@ -105,6 +112,8 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
         requestId = generateNewVrfRequest(numWordsToRequest, 0);
 
         uint256 leftOverEth = msg.value - (numPacksPaid * PACK_PRICE);
+        prizePool.playerBoughtPacks{value: msg.value - leftOverEth}(msg.sender);
+
         if (leftOverEth != 0) {
             (bool sent,) = address(msg.sender).call{value: leftOverEth}("");
             if (!sent) revert PEC__EthNotSend();
@@ -375,5 +384,8 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
 
         // Increase DMT price for other users
         totalUniversesCreated++;
+
+        // Add rewards
+        prizePool.playerWon(user);
     }
 }
