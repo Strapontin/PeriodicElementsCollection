@@ -13,33 +13,29 @@ contract DarkMatterTokens is IDarkMatterTokens, ERC20, Ownable {
     error DMT__DelayNotPassedYet();
     error DMT__NotEnoughEtherSent();
 
-    uint256 public immutable delay;
+    event DMTBought(address from, uint256 amount);
+    event DMTBurned(address from, uint256 amount);
+
     PeriodicElementsCollection public immutable pec;
 
-    // Buying DMT is only possible after 14 days
-    modifier delayHasPassed() {
-        if (block.timestamp <= delay) revert DMT__DelayNotPassedYet();
-        _;
-    }
-
-    constructor(PeriodicElementsCollection _pec) ERC20("DarkMatterTokens", "DMT") Ownable(msg.sender) {
-        delay = block.timestamp + 14 days;
-        pec = _pec;
+    constructor() ERC20("DarkMatterTokens", "DMT") Ownable(msg.sender) {
+        pec = PeriodicElementsCollection(msg.sender);
     }
 
     function burn(address from, uint256 amount) public onlyOwner {
         _burn(from, amount);
+        emit DMTBurned(msg.sender, amount);
     }
 
-    function buy() public payable delayHasPassed {
+    function buy() public payable {
         if (msg.value < pec.DMT_FEE_PER_TRANSFER()) {
             revert DMT__NotEnoughEtherSent();
         }
 
-        // DMT_price = (1 / 1 + pricePerUniverseCreated) ether
         uint256 amountToMint =
             msg.value * 1e18 / (1e18 + pec.totalUniversesCreated() * pec.DMT_PRICE_INCREASE_PER_UNIVERSE());
 
         _mint(msg.sender, amountToMint);
+        emit DMTBought(msg.sender, amountToMint);
     }
 }

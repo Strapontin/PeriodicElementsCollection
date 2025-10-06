@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 import {IElementsData} from "./interfaces/IElementsData.sol";
 
-contract ElementsData is IElementsData {
+abstract contract ElementsData is IElementsData {
     uint256 public constant ANTIMATTER_OFFSET = 1000;
 
     mapping(uint256 elementNumber => ElementDataStruct) public elementsData; // List of elements' datas

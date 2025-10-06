@@ -16,20 +16,6 @@ import {IERC1155Errors} from "@openzeppelin/contracts/interfaces/draft-IERC6093.
 import {IERC20Errors} from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 
 contract PECTransfersTest is PECBaseTest {
-    function test_dmtIsNotBuyableBefore14Days() public {
-        vm.expectRevert(DarkMatterTokens.DMT__DelayNotPassedYet.selector);
-        dmt.buy{value: 1 ether}();
-
-        vm.warp(block.timestamp + 14 days);
-
-        vm.expectRevert(DarkMatterTokens.DMT__DelayNotPassedYet.selector);
-        dmt.buy{value: 1 ether}();
-
-        vm.warp(block.timestamp + 1);
-
-        dmt.buy{value: 1 ether}();
-    }
-
     function test_needDmtOnlyWhenTransferingToPlayer() public dmtMintable {
         pec.forceMint(alice, 1, 2);
         pec.setUserLevel(alice, 1);

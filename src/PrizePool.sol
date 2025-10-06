@@ -53,15 +53,15 @@ contract PrizePool is ERC20, Ownable {
         (success);
     }
 
-    function playerWon(address player) external onlyOwner {
+    function playerWon(address player) external onlyOwner returns (uint256 prize) {
         uint256 shares = balanceOf(player);
 
         if (shares == 0) {
             // Player has no shares. Either they send their shares to someone else (why), or they won the game without buying any packs (respect)
-            return;
+            return 0;
         }
 
-        uint256 prize = rewardsPerShare(shares);
+        prize = rewardsPerShare(shares);
 
         _burn(player, shares);
 

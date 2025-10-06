@@ -29,6 +29,17 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
     error PEC__UnauthorizedTransfer();
     error PEC__UserDoesNotHaveAllElementsToCallBigBang(uint256 level);
 
+    event MintRequestInitalized(uint256 indexed requestId, address indexed account, uint256 numPacksPaid);
+    event ElementsMinted(address indexed from, uint256[] ids, uint256[] values);
+    event ElementsReadyToMint(address indexed user);
+    event ElementsFused(address indexed user, uint256 level, bool isMatter, uint256 amountOfLinesFused);
+    event ElementsBurned(address indexed user, uint256[] ids, uint256[] values);
+    event AuthorizeTransferChanged(
+        address indexed from, address indexed to, uint256 id, uint256 oldValue, uint256 newValue
+    );
+    event AddressSetAsAuthorized(address indexed from, address indexed to, bool isAuthorized);
+    event BigBangExploded(address indexed user, uint256 prize);
+
     enum VRFStatus {
         None,
         PendingVRFCallback,
@@ -49,7 +60,7 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
     uint256 public constant NUM_MAX_PACKS_MINTED_AT_ONCE = 100;
     uint256 public constant PACK_PRICE = 0.002 ether;
     uint256 public constant DMT_FEE_PER_TRANSFER = 0.000_005 ether;
-    uint256 public constant DMT_PRICE_INCREASE_PER_UNIVERSE = 0.01 ether;
+    uint256 public constant DMT_PRICE_INCREASE_PER_UNIVERSE = 0.02 ether;
 
     // Chainlink Variables
     uint256 public immutable SUBSCRIPTION_ID;
@@ -72,8 +83,6 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
     // Amount of transfers made by a user. Determines the DMT fee when transfering
     mapping(address user => uint256) public amountTransfers;
 
-    event MintRequestInitalized(uint256 indexed requestId, address indexed account);
-
     constructor(
         uint256 _subscriptionId,
         address _vrfCoordinatorV2Address,
@@ -88,7 +97,7 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
         ERC1155Supply()
     {
         SUBSCRIPTION_ID = _subscriptionId;
-        darkMatterTokens = new DarkMatterTokens(this);
+        darkMatterTokens = new DarkMatterTokens();
         prizePool = new PrizePool(feesReceiver);
     }
 
@@ -119,7 +128,7 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
             if (!sent) revert PEC__EthNotSend();
         }
 
-        emit MintRequestInitalized(requestId, msg.sender);
+        emit MintRequestInitalized(requestId, msg.sender, numPacksPaid);
     }
 
     // levelToMint = 0 => all available elements
@@ -170,12 +179,16 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
 
         // Mint 5 Hydrogen and 5 Helium to the user for each pack
         _mintBatch(user, ids, values, "");
+
+        emit ElementsMinted(user, ids, values);
     }
 
     function fulfillRandomWords(uint256 requestId, uint256[] calldata randomWords) internal virtual override {
         requestIdToVRFState[requestId].randomWords = randomWords;
         requestIdToVRFState[requestId].status = VRFStatus.ReadyToMint;
-        // emit elementAvailable ?
+
+        address user = requestIdToVRFState[requestId].minterAddress;
+        emit ElementsReadyToMint(user);
     }
 
     function unpackRandomMatter(uint256 requestId) external returns (uint256[] memory ids, uint256[] memory values) {
@@ -225,6 +238,8 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
 
         // Finally, mint the tokens
         _mintBatch(vrfState.minterAddress, ids, values, "");
+
+        emit ElementsMinted(vrfState.minterAddress, ids, values);
     }
 
     function fuseToNextLevel(uint256 levelToBurn, uint32 lineAmountToBurn, bool isMatter)
@@ -254,6 +269,8 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
         uint256 levelToMint = levelToBurn + 1;
         if (levelToMint == 8) levelToMint = ANTIMATTER_OFFSET + 1;
 
+        emit ElementsFused(msg.sender, levelToBurn, isMatter, lineAmountToBurn);
+
         // Need to request X new random element from the next level
         return generateNewVrfRequest(lineAmountToBurn, levelToMint);
     }
@@ -278,16 +295,37 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
                 burnedTimes[msg.sender][ids[i]] += values[i] * userUniversesCreated;
             }
         }
+
+        emit ElementsBurned(msg.sender, ids, values);
     }
 
     /* Transfers */
 
+    // @info: These authorization functions allow `from` to send NFTs to `msg.sender`
+    // When a player receives an NFT, they have to pay fees, hence the need to authorize sender.
+
     function addAuthorizeTransfer(address from, uint256 id, uint256 addValue) external {
+        uint256 oldValue = authorizedTransfer[msg.sender][from][id];
         authorizedTransfer[msg.sender][from][id] += addValue;
+        uint256 newValue = authorizedTransfer[msg.sender][from][id];
+
+        emit AuthorizeTransferChanged(from, msg.sender, id, oldValue, newValue);
+    }
+
+    function decreaseAuthorizeTransfer(address from, uint256 id, uint256 removeValue) external {
+        uint256 oldValue = authorizedTransfer[msg.sender][from][id];
+
+        if (authorizedTransfer[msg.sender][from][id] < removeValue) authorizedTransfer[msg.sender][from][id] = 0;
+        else authorizedTransfer[msg.sender][from][id] -= removeValue;
+
+        uint256 newValue = authorizedTransfer[msg.sender][from][id];
+
+        emit AuthorizeTransferChanged(from, msg.sender, id, oldValue, newValue);
     }
 
     function setAuthorizedAddressForTransfer(address from, bool isAuthorized) external {
         authorizedAddressForTransfer[msg.sender][from] = isAuthorized;
+        emit AddressSetAsAuthorized(from, msg.sender, isAuthorized);
     }
 
     function _update(address from, address to, uint256[] memory ids, uint256[] memory values)
@@ -303,7 +341,6 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
             _payFees(from, to, values);
         }
 
-        // put the code to run **before** the transfer HERE
         super._update(from, to, ids, values);
     }
 
@@ -327,23 +364,25 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
 
     function _burnFeeDMT(address user, uint256[] memory values) internal {
         // If the user is not a player, no fees to pay
-        if (usersLevel[user] != 0) {
-            uint256 start = amountTransfers[user];
-            uint256 end = start;
-
-            // Calculates the amount of DMT to burn based on current user's transfer and amount of values to send
-            for (uint256 i = 0; i < values.length; i++) {
-                end += values[i];
-            }
-
-            // Calculate sum of arithmetic sequence from start+1 to end
-            uint256 n = end - start;
-            uint256 amountToBurn = n * (start + 1 + end) / 2;
-
-            // Update the user's transfer count and burn the fees
-            amountTransfers[user] = end;
-            darkMatterTokens.burn(user, DMT_FEE_PER_TRANSFER * amountToBurn);
+        if (usersLevel[user] == 0) {
+            return;
         }
+
+        uint256 start = amountTransfers[user];
+        uint256 end = start;
+
+        // Calculates the amount of DMT to burn based on current user's transfer and amount of values to send
+        for (uint256 i = 0; i < values.length; i++) {
+            end += values[i];
+        }
+
+        // Calculate sum of arithmetic sequence from start+1 to end
+        uint256 n = end - start;
+        uint256 amountToBurn = n * (start + 1 + end) / 2;
+
+        // Update the user's transfer count and burn the fees
+        amountTransfers[user] = end;
+        darkMatterTokens.burn(user, DMT_FEE_PER_TRANSFER * amountToBurn);
     }
 
     /* End the game */
@@ -386,6 +425,8 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
         totalUniversesCreated++;
 
         // Add rewards
-        prizePool.playerWon(user);
+        uint256 prize = prizePool.playerWon(user);
+
+        emit BigBangExploded(user, prize);
     }
 }

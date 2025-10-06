@@ -39,13 +39,17 @@ contract PECDeployer is Script {
         vm.startBroadcast(config.account);
         // If we're on the anvil network, deploy the test contract
         if (block.chainid == LOCAL_CHAIN_ID) {
-            periodicElementsCollection =
-                address(new PECTestContract(config.subscriptionId, config.vrfCoordinator, getElementsData(), _feeReceiver));
+            periodicElementsCollection = address(
+                new PECTestContract(config.subscriptionId, config.vrfCoordinator, getElementsData(), _feeReceiver)
+            );
         } else {
-            address feeReceiver = msg.sender; // TODO: Change this to a specific fee receiver 
+            address feeReceiver = msg.sender; // TODO: Change this to a specific fee receiver
 
-            periodicElementsCollection =
-                address(new PeriodicElementsCollection(config.subscriptionId, config.vrfCoordinator, getElementsData(), feeReceiver));
+            periodicElementsCollection = address(
+                new PeriodicElementsCollection(
+                    config.subscriptionId, config.vrfCoordinator, getElementsData(), feeReceiver
+                )
+            );
         }
         vm.stopBroadcast();
 
