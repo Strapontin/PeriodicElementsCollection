@@ -11,6 +11,9 @@ contract PrizePool is ERC20, Ownable {
     error PP__NotFeeReceiver();
     error PP__NotProposedFeeReceiver();
 
+    event NewFeeReceiverProposed(address);
+    event NewFeeReceiverAccepted(address);
+
     WithdrawalPool public withdrawalPool;
 
     address public feeReceiver;
@@ -28,6 +31,8 @@ contract PrizePool is ERC20, Ownable {
         }
 
         proposedFeeReceiver = newFeeReceiver;
+
+        emit NewFeeReceiverProposed(newFeeReceiver);
     }
 
     function acceptFeeReceiver() external {
@@ -37,6 +42,8 @@ contract PrizePool is ERC20, Ownable {
 
         feeReceiver = proposedFeeReceiver;
         proposedFeeReceiver = address(0);
+
+        emit NewFeeReceiverAccepted(msg.sender);
     }
 
     function playerBoughtPacks(address player) external payable onlyOwner {
