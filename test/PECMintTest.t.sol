@@ -10,7 +10,6 @@ import {PECTestContract, RevertOnReceive} from "test/contracts/PECTestContract.s
 
 import {Test, console2} from "forge-std/Test.sol";
 import {VRFCoordinatorV2_5Mock} from "@chainlink/contracts/src/v0.8/vrf/mocks/VRFCoordinatorV2_5Mock.sol";
-import {FundSubscription} from "script/VRFInteractions.s.sol";
 import {PECBaseTest} from "test/PECBaseTest.t.sol";
 
 contract PECMintTest is PECBaseTest {
@@ -64,7 +63,7 @@ contract PECMintTest is PECBaseTest {
     }
 
     function test_mintFreePacksShouldMint5HeliumAndHydrogen() public {
-        vm.warp(block.timestamp + 1e18);
+        vm.warp(block.timestamp + 30 days);
         vm.startPrank(alice);
         pec.mintFreePacks();
 
@@ -72,7 +71,7 @@ contract PECMintTest is PECBaseTest {
     }
 
     function test_mintFreeTwiceShouldNotGiveMore() public {
-        vm.warp(block.timestamp + 1e18);
+        vm.warp(block.timestamp + 30 days);
         vm.startPrank(alice);
         pec.mintFreePacks();
 

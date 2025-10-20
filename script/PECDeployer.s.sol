@@ -10,7 +10,7 @@ import {Script, console} from "forge-std/Script.sol";
 import {VRFCoordinatorV2_5Mock} from "@chainlink/contracts/src/v0.8/vrf/mocks/VRFCoordinatorV2_5Mock.sol";
 
 import {HelperConfig} from "./HelperConfig.s.sol";
-import {CreateSubscription, FundSubscription, AddConsumer} from "./VRFInteractions.s.sol";
+import {CreateSubscription, AddConsumer} from "./VRFInteractions.s.sol";
 
 contract PECDeployer is Script {
     uint256 public constant LOCAL_CHAIN_ID = 31337;
@@ -28,10 +28,6 @@ contract PECDeployer is Script {
             CreateSubscription createSubscription = new CreateSubscription();
             (config.subscriptionId, config.vrfCoordinator) =
                 createSubscription.createSubscription(config.vrfCoordinator, config.account);
-
-            // Fund it
-            FundSubscription fundSubscription = new FundSubscription();
-            fundSubscription.fundSubscription(config);
         }
 
         address periodicElementsCollection;

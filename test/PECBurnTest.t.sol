@@ -10,7 +10,6 @@ import {PECTestContract} from "test/contracts/PECTestContract.sol";
 
 import {Test, console2} from "forge-std/Test.sol";
 import {VRFCoordinatorV2_5Mock} from "@chainlink/contracts/src/v0.8/vrf/mocks/VRFCoordinatorV2_5Mock.sol";
-import {FundSubscription} from "script/VRFInteractions.s.sol";
 import {PECBaseTest} from "test/PECBaseTest.t.sol";
 import {IERC1155Errors} from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 

@@ -10,7 +10,6 @@ import {PECTestContract} from "test/contracts/PECTestContract.sol";
 
 import {Test, console2} from "forge-std/Test.sol";
 import {VRFCoordinatorV2_5Mock} from "@chainlink/contracts/src/v0.8/vrf/mocks/VRFCoordinatorV2_5Mock.sol";
-import {FundSubscription} from "script/VRFInteractions.s.sol";
 import {PECBaseTest} from "test/PECBaseTest.t.sol";
 import {IERC1155Errors} from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 import {IERC20Errors} from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
@@ -135,6 +134,25 @@ contract PECTransfersTest is PECBaseTest {
         vm.prank(alice);
         vm.expectRevert(PeriodicElementsCollection.PEC__UnauthorizedTransfer.selector);
         pec.safeTransferFrom(alice, address(bob), 1, 1, hex"06");
+    }
+
+    function test_decreaseAuthorizeTransferShouldReduceFromAmount(uint128 amount) public {
+        vm.startPrank(bob);
+        pec.addAuthorizeTransfer(alice, 1, type(uint128).max);
+        assertEq(pec.authorizedTransfer(bob, alice, 1), type(uint128).max);
+
+        pec.decreaseAuthorizeTransfer(alice, 1, amount);
+        assertEq(pec.authorizedTransfer(bob, alice, 1), type(uint128).max - amount);
+    }
+
+    function test_decreateAuthorizeTransferShouldNotRevertWhenAmountIsHigher(uint256 amount) public {
+        vm.startPrank(bob);
+        pec.decreaseAuthorizeTransfer(alice, 1, amount);
+        assertEq(pec.authorizedTransfer(bob, alice, 1), 0);
+
+        pec.addAuthorizeTransfer(alice, 1, amount);
+        pec.decreaseAuthorizeTransfer(alice, 1, type(uint256).max);
+        assertEq(pec.authorizedTransfer(bob, alice, 1), 0);
     }
 
     function test_dmtFeesInProgress() public dmtMintable {

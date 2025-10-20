@@ -13,7 +13,6 @@ import {IElementsData} from "src/interfaces/IElementsData.sol";
 
 import {Test, console} from "forge-std/Test.sol";
 import {VRFCoordinatorV2_5Mock} from "@chainlink/contracts/src/v0.8/vrf/mocks/VRFCoordinatorV2_5Mock.sol";
-import {FundSubscription} from "script/VRFInteractions.s.sol";
 
 contract PECBaseTest is Test {
     uint256 public ELEMENTS_IN_PACK;
@@ -21,6 +20,7 @@ contract PECBaseTest is Test {
     uint256 public PACK_PRICE;
     uint256 public ANTIMATTER_OFFSET;
     uint256 public DMT_FEE_PER_TRANSFER;
+    uint256 public SUBSCRIPTION_ID;
 
     PECTestContract pec;
     DarkMatterTokens dmt;
@@ -36,10 +36,10 @@ contract PECBaseTest is Test {
     address feeReceiver = makeAddr("feeReceiver");
 
     VRFCoordinatorV2_5Mock vrfCoordinator;
-    FundSubscription fundSubscription;
 
     modifier fundSubscriptionMax() {
-        fundSubscription.fundSubscription(config, type(uint256).max - 3 ether);
+        vm.deal(address(this), 100 ether);
+        pec.s_vrfCoordinator().fundSubscriptionWithNative{value: 100 ether}(SUBSCRIPTION_ID);
         _;
     }
 
@@ -61,8 +61,7 @@ contract PECBaseTest is Test {
         PACK_PRICE = pec.PACK_PRICE();
         ANTIMATTER_OFFSET = pec.ANTIMATTER_OFFSET();
         DMT_FEE_PER_TRANSFER = pec.DMT_FEE_PER_TRANSFER();
-
-        fundSubscription = new FundSubscription();
+        SUBSCRIPTION_ID = pec.SUBSCRIPTION_ID();
 
         config = helperConfig.getConfig();
         config.subscriptionId = pec.SUBSCRIPTION_ID();
@@ -125,5 +124,26 @@ contract BasicTests is PECBaseTest {
         eds[6] = IElementsData.ElementDataStruct({number: 7, name: "", symbol: "", initialRAM: 0, level: 7});
 
         new PeriodicElementsCollection(0, address(this), eds, msg.sender);
+    }
+
+    function test_fundingSubscriptionWorks(uint256 amount) public {
+        amount = _bound(amount, 0, 100 ether);
+        vm.prank(alice);
+        pec.fundSubscription{value: amount}();
+
+        (, uint96 nativeBalance,,,) = pec.s_vrfCoordinator().getSubscription(SUBSCRIPTION_ID);
+
+        assertEq(nativeBalance, amount);
+    }
+
+    function test_fundingSubscriptionGivesExpectedAmountOfFreeElements(uint256 amount) public {
+        amount = _bound(amount, 0, 100 ether);
+        vm.prank(alice);
+        pec.fundSubscription{value: amount}();
+
+        // We expect to have 5 H & 5 He per pack-price refuel
+        uint256 elementsExpected = amount * 5 / PACK_PRICE;
+        assertEq(pec.balanceOf(alice, 1), elementsExpected);
+        assertEq(pec.balanceOf(alice, 2), elementsExpected);
     }
 }

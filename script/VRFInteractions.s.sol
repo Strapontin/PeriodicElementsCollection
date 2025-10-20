@@ -15,6 +15,7 @@ contract CreateSubscription is Script {
 
     function createSubscriptionUsingConfig() public returns (uint256, address) {
         HelperConfig helperConfig = new HelperConfig();
+
         address vrfCoordinator = helperConfig.getConfig().vrfCoordinator;
         address account = helperConfig.getConfig().account;
 
@@ -36,47 +37,6 @@ contract CreateSubscription is Script {
     }
 }
 
-contract FundSubscription is Script, CodeConstants {
-    uint256 public constant FUND_AMOUNT = 3 ether;
-
-    function run() public {
-        fundSubscriptionUsingConfig();
-    }
-
-    function fundSubscriptionUsingConfig() public {
-        HelperConfig helperConfig = new HelperConfig();
-        fundSubscription(helperConfig.getConfig());
-    }
-
-    function fundSubscription(HelperConfig.NetworkConfig memory networkConfig) public {
-        fundSubscription(networkConfig, FUND_AMOUNT);
-    }
-
-    function fundSubscription(HelperConfig.NetworkConfig memory networkConfig, uint256 fundAmount) public {
-        address vrfCoordinator = networkConfig.vrfCoordinator;
-        uint256 subscriptionId = networkConfig.subscriptionId;
-        address linkToken = networkConfig.link;
-        address account = networkConfig.account;
-
-        console.log("Funding Subscription: ", subscriptionId);
-        console.log("Using vrfCoordinator: ", vrfCoordinator);
-        console.log("On chainid: ", block.chainid);
-
-        if (block.chainid == LOCAL_CHAIN_ID) {
-            vm.startBroadcast();
-            VRFCoordinatorV2_5Mock(vrfCoordinator).fundSubscription(subscriptionId, fundAmount);
-            vm.stopBroadcast();
-        } else {
-            console.log("Funding deactivated here as it probably is already done");
-            console.log("START BROADCASTING ON ACCOUNT =", account);
-
-            vm.startBroadcast(account);
-            LinkToken(linkToken).transferAndCall(vrfCoordinator, fundAmount, abi.encode(subscriptionId));
-            vm.stopBroadcast();
-        }
-    }
-}
-
 contract AddConsumer is Script {
     function run() external {
         address mostRecentlyDeployed =
@@ -86,6 +46,7 @@ contract AddConsumer is Script {
 
     function addConsumerUsingConfig(address mostRecentlyDeployed) public {
         HelperConfig helperConfig = new HelperConfig();
+
         uint256 subId = helperConfig.getConfig().subscriptionId;
         address vrfCoordinator = helperConfig.getConfig().vrfCoordinator;
         address account = helperConfig.getConfig().account;

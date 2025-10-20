@@ -140,7 +140,7 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
                 requestConfirmations: BLOCK_CONFIRMATIONS,
                 callbackGasLimit: CALLBACK_GAS_LIMIT,
                 numWords: numWordsToRequest,
-                extraArgs: VRFV2PlusClient._argsToBytes(VRFV2PlusClient.ExtraArgsV1({nativePayment: false}))
+                extraArgs: VRFV2PlusClient._argsToBytes(VRFV2PlusClient.ExtraArgsV1({nativePayment: true}))
             })
         );
 
@@ -428,5 +428,26 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
         uint256 prize = prizePool.playerWon(user);
 
         emit BigBangExploded(user, prize);
+    }
+
+    function fundSubscription() public payable {
+        _mintFreePacks(msg.sender);
+        
+        // When users fund the subscription, they get a small amount of elements from it
+        uint256[] memory ids = new uint256[](2);
+        uint256[] memory values = new uint256[](2);
+        ids[0] = 1; // Hydrogen
+        ids[1] = 2; // Helium
+
+        // Earns 5 hydrogen and helium per pack price send to refuel the subscription
+        values[0] = msg.value * 5 / PACK_PRICE;
+        values[1] = msg.value * 5 / PACK_PRICE;
+
+        // Mint 5 Hydrogen and 5 Helium to the user for each pack
+        _mintBatch(msg.sender, ids, values, "");
+
+        emit ElementsMinted(msg.sender, ids, values);
+
+        s_vrfCoordinator.fundSubscriptionWithNative{value: msg.value}(SUBSCRIPTION_ID);
     }
 }
