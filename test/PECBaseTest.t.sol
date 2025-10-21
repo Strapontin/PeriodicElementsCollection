@@ -43,11 +43,6 @@ contract PECBaseTest is Test {
         _;
     }
 
-    modifier dmtMintable() {
-        vm.warp(block.timestamp + 14 days + 1);
-        _;
-    }
-
     function setUp() public {
         address pecTestContract;
         (pecTestContract, helperConfig) = (new PECDeployer()).deployContract(feeReceiver);
@@ -138,6 +133,7 @@ contract BasicTests is PECBaseTest {
 
     function test_fundingSubscriptionGivesExpectedAmountOfFreeElements(uint256 amount) public {
         amount = _bound(amount, 0, 100 ether);
+
         vm.prank(alice);
         pec.fundSubscription{value: amount}();
 

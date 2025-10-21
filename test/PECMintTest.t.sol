@@ -102,7 +102,7 @@ contract PECMintTest is PECBaseTest {
         assertEq(pec.totalSupply(), 100);
     }
 
-    function test_shouldNotMintMoreThan500RandomWords(uint32 packsToMint) public fundSubscriptionMax {
+    function test_shouldNotMintMoreThan100RandomWords(uint32 packsToMint) public fundSubscriptionMax {
         packsToMint = uint32(bound(packsToMint, 1, type(uint32).max));
 
         // Go through the process of minting a pack
@@ -114,7 +114,8 @@ contract PECMintTest is PECBaseTest {
         vrfCoordinator.fulfillRandomWords(requestId, address(pec));
         PeriodicElementsCollection.VRFState memory state = pec.getVRFStateFromRequestId(requestId);
 
-        assert(state.randomWords.length > 0 && state.randomWords.length <= 500);
+        assertGt(state.randomWords.length, 0);
+        assertLe(state.randomWords.length, NUM_MAX_PACKS_MINTED_AT_ONCE * ELEMENTS_IN_PACK);
     }
 
     function test_payForXpacksMints5XElements(uint256 packsToMint) public fundSubscriptionMax {
@@ -125,11 +126,11 @@ contract PECMintTest is PECBaseTest {
         vm.prank(address(vrfCoordinator));
         vrfCoordinator.fulfillRandomWords(requestId, address(pec));
 
-        (, uint256[] memory values) = pec.unpackRandomMatter(requestId);
+        (, uint256[] memory valuesUnpacked) = pec.unpackRandomMatter(requestId);
 
         uint256 allValues;
-        for (uint256 i = 0; i < values.length; i++) {
-            allValues += values[i];
+        for (uint256 i = 0; i < valuesUnpacked.length; i++) {
+            allValues += valuesUnpacked[i];
         }
 
         assertEq(allValues, pec.totalSupply());
@@ -321,5 +322,12 @@ contract PECMintTest is PECBaseTest {
         // Minting a free pack again 2 hours later gives another pack
         pec.mintFreePacks();
         assertEq(pec.balanceOf(alice, 1), 10);
+    }
+
+    function test_MintingEvents(uint256 packsMinted) public {
+        vm.startPrank(alice);
+        packsMinted = _bound(packsMinted, 1, NUM_MAX_PACKS_MINTED_AT_ONCE);
+
+        pec.mintPack{value: PACK_PRICE * packsMinted}();
     }
 }

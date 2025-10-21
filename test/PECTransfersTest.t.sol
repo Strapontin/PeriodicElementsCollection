@@ -15,7 +15,8 @@ import {IERC1155Errors} from "@openzeppelin/contracts/interfaces/draft-IERC6093.
 import {IERC20Errors} from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 
 contract PECTransfersTest is PECBaseTest {
-    function test_needDmtOnlyWhenTransferingToPlayer() public dmtMintable {
+    function test_needDmtOnlyWhenTransferingToPlayer() public {
+        vm.warp(block.timestamp + 7 days);
         pec.forceMint(alice, 1, 2);
         pec.setUserLevel(alice, 1);
 
@@ -68,7 +69,8 @@ contract PECTransfersTest is PECBaseTest {
         assertEq(pec.balanceOf(bob, 1), 37); // 35 free + 2 from Alice
     }
 
-    function test_addAuthorizeTransfer() public dmtMintable {
+    function test_addAuthorizeTransfer() public {
+        vm.warp(block.timestamp + 7 days);
         // We need to have both users as players, with DMT bought
         buyDmt(alice, DMT_FEE_PER_TRANSFER * 100);
         buyDmt(bob, DMT_FEE_PER_TRANSFER * 100);
@@ -97,7 +99,8 @@ contract PECTransfersTest is PECBaseTest {
         pec.safeTransferFrom(alice, address(bob), 1, 1, "");
     }
 
-    function test_setAuthorizedAddressForTransfer() public dmtMintable {
+    function test_setAuthorizedAddressForTransfer() public {
+        vm.warp(block.timestamp + 7 days);
         buyDmt(alice, type(uint128).max);
         buyDmt(bob, type(uint128).max);
 
@@ -155,7 +158,8 @@ contract PECTransfersTest is PECBaseTest {
         assertEq(pec.authorizedTransfer(bob, alice, 1), 0);
     }
 
-    function test_dmtFeesInProgress() public dmtMintable {
+    function test_dmtFeesInProgress() public {
+        vm.warp(block.timestamp + 7 days);
         uint256 dmtStart = 1e18;
 
         pec.forceMint(alice, 1, 10);
@@ -191,7 +195,8 @@ contract PECTransfersTest is PECBaseTest {
         assertEq(timesSpendAlice, timesSpendBob);
     }
 
-    function test_dmtFeesWhenBatched(uint32 end, uint256 split) public dmtMintable {
+    function test_dmtFeesWhenBatched(uint32 end, uint256 split) public {
+        vm.warp(block.timestamp + 7 days);
         vm.assume(end > 0);
         uint256 start = 1;
 
@@ -220,7 +225,7 @@ contract PECTransfersTest is PECBaseTest {
         assertEq(dmt.balanceOf(bob), 0);
     }
 
-    function test_buyDmtRevertsWhenNotEnoughEtherSent(uint256 value) public dmtMintable {
+    function test_buyDmtRevertsWhenNotEnoughEtherSent(uint256 value) public {
         value = bound(value, 0, DMT_FEE_PER_TRANSFER - 1);
 
         vm.expectRevert(DarkMatterTokens.DMT__NotEnoughEtherSent.selector);
