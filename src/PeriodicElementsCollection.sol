@@ -91,9 +91,7 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
     )
         VRFConsumerBaseV2Plus(_vrfCoordinatorV2Address)
         ElementsData(datas)
-        ERC1155(
-            "https://gray-acute-wildfowl-4.mypinata.cloud/ipfs/QmcYB1e51yEXG5hosQ2N8RP8zVLTy5wUrc6523Jy21YczT/{id}.json"
-        )
+        ERC1155("https://gray-acute-wildfowl-4.mypinata.cloud/ipfs/QmcYB1e51yEXG5hosQ2N8RP8zVLTy5wUrc6523Jy21YczT/{id}.json")
         ERC1155Supply()
     {
         SUBSCRIPTION_ID = _subscriptionId;
@@ -105,9 +103,10 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
     //     _setURI(newuri);
     // }
 
-    function mintPack() public payable returns (uint256 requestId) {
-        // If no free packs available and not enough ether send, revert
+    function mintPack() external payable returns (uint256 requestId) {
+        // If enough ether send, revert
         if (msg.value < PACK_PRICE) revert PEC__UserDidNotPayEnough(PACK_PRICE - msg.value);
+        _mintFreePacks(msg.sender);
 
         uint256 numPacksPaid = msg.value / PACK_PRICE;
         uint32 numWordsToRequest = uint32(numPacksPaid * ELEMENTS_IN_PACK);
@@ -250,6 +249,8 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
         if (levelToBurn < 1 || levelToBurn > 7) revert PEC__LevelDoesNotExist();
         if (levelToBurn == 7 && !isMatter) revert PEC__CantFuseLastLevelOfAntimatter();
 
+        _mintFreePacks(msg.sender);
+
         uint256 amountElements = elementsAtLevel[levelToBurn].length;
         uint256 matterOffset = isMatter ? 0 : ANTIMATTER_OFFSET;
 
@@ -280,6 +281,8 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
     // This function burns an amount of elements to make them less likely to drop randomly
     function increaseRelativeAtomicMass(uint256[] memory ids, uint256[] memory values) external {
         if (ids.length == 0) revert PEC__IncorrectParameters();
+
+        _mintFreePacks(msg.sender);
 
         _burnBatch(msg.sender, ids, values);
 
@@ -387,7 +390,7 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
 
     /* End the game */
 
-    function bigBang(address user) public {
+    function bigBang(address user) external {
         uint256[] memory allElements = elementsUnlockedUnderLevel[7];
         uint256[] memory idsToBurn = new uint256[](allElements.length * 2);
         uint256[] memory valuesToBurn = new uint256[](allElements.length * 2);
@@ -430,9 +433,9 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
         emit BigBangExploded(user, prize);
     }
 
-    function fundSubscription() public payable {
+    function fundSubscription() external payable {
         _mintFreePacks(msg.sender);
-        
+
         // When users fund the subscription, they get a small amount of elements from it
         uint256[] memory ids = new uint256[](2);
         uint256[] memory values = new uint256[](2);
