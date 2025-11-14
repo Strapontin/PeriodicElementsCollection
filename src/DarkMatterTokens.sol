@@ -24,7 +24,7 @@ contract DarkMatterTokens is IDarkMatterTokens, ERC20, Ownable {
 
     function burn(address from, uint256 amount) external onlyOwner {
         _burn(from, amount);
-        emit DMTBurned(msg.sender, amount);
+        emit DMTBurned(from, amount);
     }
 
     function buy() external payable {
