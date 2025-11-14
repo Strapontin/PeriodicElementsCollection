@@ -3,12 +3,7 @@ pragma solidity ^0.8.20;
 
 import {PeriodicElementsCollection} from "src/PeriodicElementsCollection.sol";
 import {DarkMatterTokens} from "src/DarkMatterTokens.sol";
-import {ElementsData} from "src/ElementsData.sol";
-import {HelperConfig} from "script/HelperConfig.s.sol";
-import {PECDeployer} from "script/PECDeployer.s.sol";
-import {PECTestContract} from "test/contracts/PECTestContract.sol";
-
-import {Test, console2} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {VRFCoordinatorV2_5Mock} from "@chainlink/contracts/src/v0.8/vrf/mocks/VRFCoordinatorV2_5Mock.sol";
 import {PECBaseTest} from "test/PECBaseTest.t.sol";
 import {IERC1155Errors} from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";

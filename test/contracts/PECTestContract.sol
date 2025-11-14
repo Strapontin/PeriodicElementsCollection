@@ -65,6 +65,10 @@ contract PECTestContract is PeriodicElementsCollection {
         }
         forceMint(user, ids, values);
     }
+
+    function setTotalUniversesCreated(uint256 newValue) public {
+        totalUniversesCreated = newValue;
+    }
 }
 
 contract RevertOnReceive {

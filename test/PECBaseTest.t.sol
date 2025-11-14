@@ -71,8 +71,14 @@ contract PECBaseTest is Test {
     }
 
     function buyDmt(address user, uint256 amount) internal {
+        uint256 amountBefore = address(prizePool).balance;
+
         vm.startPrank(user);
         dmt.buy{value: amount}();
+
+        // Value is sent to PrizePool
+        assertEq(address(prizePool).balance, amountBefore + amount - amount / 100);
+
         pec.mintFreePacks();
         vm.stopPrank();
     }

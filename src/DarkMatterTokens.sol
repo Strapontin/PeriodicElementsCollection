@@ -11,9 +11,9 @@ import {PeriodicElementsCollection} from "./PeriodicElementsCollection.sol";
 /// https://x.com/0xStrapontin on X
 contract DarkMatterTokens is IDarkMatterTokens, ERC20, Ownable {
     error DMT__DelayNotPassedYet();
-    error DMT__NotEnoughEtherSent();
+    error DMT__NotEnoughEtherSent(uint256 minAmountToSend);
 
-    event DMTBought(address from, uint256 amount);
+    event DMTMinted(address from, uint256 amount);
     event DMTBurned(address from, uint256 amount);
 
     PeriodicElementsCollection public immutable pec;
@@ -22,20 +22,27 @@ contract DarkMatterTokens is IDarkMatterTokens, ERC20, Ownable {
         pec = PeriodicElementsCollection(msg.sender);
     }
 
-    function burn(address from, uint256 amount) public onlyOwner {
+    function burn(address from, uint256 amount) external onlyOwner {
         _burn(from, amount);
         emit DMTBurned(msg.sender, amount);
     }
 
-    function buy() public payable {
-        if (msg.value < pec.DMT_FEE_PER_TRANSFER()) {
-            revert DMT__NotEnoughEtherSent();
-        }
-
+    function buy() external payable {
         uint256 amountToMint =
             msg.value * 1e18 / (1e18 + pec.totalUniversesCreated() * pec.DMT_PRICE_INCREASE_PER_UNIVERSE());
 
+        if (amountToMint < pec.DMT_FEE_PER_TRANSFER()) {
+            revert DMT__NotEnoughEtherSent(minAmountToSendToMint());
+        }
+
         _mint(msg.sender, amountToMint);
-        emit DMTBought(msg.sender, amountToMint);
+        (bool success,) = payable(pec.prizePool()).call{value: msg.value}("");
+        require(success, "PrizePool did not accept funds");
+        emit DMTMinted(msg.sender, amountToMint);
+    }
+
+    function minAmountToSendToMint() public view returns (uint256) {
+        return pec.DMT_FEE_PER_TRANSFER() * (1e18 + pec.totalUniversesCreated() * pec.DMT_PRICE_INCREASE_PER_UNIVERSE())
+            / 1e18;
     }
 }

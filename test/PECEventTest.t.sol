@@ -2,14 +2,8 @@
 pragma solidity ^0.8.20;
 
 import {PeriodicElementsCollection} from "src/PeriodicElementsCollection.sol";
-// import {DarkMatterTokens} from "src/DarkMatterTokens.sol";
-// import {ElementsData} from "src/ElementsData.sol";
-// import {HelperConfig} from "script/HelperConfig.s.sol";
-// import {PECDeployer} from "script/PECDeployer.s.sol";
-// import {PECTestContract, RevertOnReceive} from "test/contracts/PECTestContract.sol";
-
-// import {Test, console2} from "forge-std/Test.sol";
-// import {VRFCoordinatorV2_5Mock} from "@chainlink/contracts/src/v0.8/vrf/mocks/VRFCoordinatorV2_5Mock.sol";
+import {DarkMatterTokens} from "src/DarkMatterTokens.sol";
+import {PrizePool} from "src/PrizePool.sol";
 import {PECBaseTest} from "test/PECBaseTest.t.sol";
 
 contract PECEventTest is PECBaseTest {
@@ -113,26 +107,130 @@ contract PECEventTest is PECBaseTest {
 
         pec.fuseToNextLevel(level, amountOfLinesFused, isMatter);
     }
+
+    function test_increaseRelativeAtomicMass_emit(uint256 elementToRemove, bool removeMatter) public {
+        elementToRemove = bound(elementToRemove, 1, pec.getElementsUnlockedUnderLevel(7).length);
+        if (!removeMatter) {
+            elementToRemove += ANTIMATTER_OFFSET;
+        }
+
+        pec.mintAll(alice);
+
+        uint256[] memory ids = new uint256[](1);
+        uint256[] memory values = new uint256[](1);
+
+        ids[0] = elementToRemove;
+        values[0] = 1;
+
+        vm.expectEmit(true, true, true, true, address(pec));
+        emit PeriodicElementsCollection.ElementsBurned(alice, ids, values);
+
+        vm.prank(alice);
+        pec.increaseRelativeAtomicMass(ids, values);
+    }
+
+    function test_addAuthorizeTransfer_emit(uint256 newValue) public {
+        uint256 id = 1;
+
+        vm.expectEmit(true, true, true, true, address(pec));
+        emit PeriodicElementsCollection.AuthorizeTransferChanged(bob, alice, id, 0, newValue);
+
+        vm.prank(alice);
+        pec.addAuthorizeTransfer(bob, id, newValue);
+    }
+
+    function test_decreaseAuthorizeTransfer_emit(uint256 addValue, uint256 removeValue) public {
+        test_addAuthorizeTransfer_emit(addValue);
+
+        uint256 id = 1;
+        uint256 newValue = addValue > removeValue ? addValue - removeValue : 0;
+
+        vm.expectEmit(true, true, true, true, address(pec));
+        emit PeriodicElementsCollection.AuthorizeTransferChanged(bob, alice, id, addValue, newValue);
+
+        vm.prank(alice);
+        pec.decreaseAuthorizeTransfer(bob, id, removeValue);
+    }
+
+    function test_setAuthorizedAddressForTransfer_emit(address from, bool isAuthorized) public {
+        vm.expectEmit(true, true, true, true, address(pec));
+        emit PeriodicElementsCollection.AddressSetAsAuthorized(from, alice, isAuthorized);
+
+        vm.prank(alice);
+        pec.setAuthorizedAddressForTransfer(from, isAuthorized);
+    }
+
+    function test_bigBang_emit(uint32 amount) public {
+        pec.mintAll(alice);
+
+        vm.deal(address(pec), amount);
+        vm.prank(address(pec));
+        prizePool.playerBoughtPacks{value: amount}(alice);
+
+        vm.expectEmit(true, true, true, true, address(pec));
+        emit PeriodicElementsCollection.BigBangExploded(alice, amount - amount / 100);
+
+        vm.prank(alice);
+        pec.bigBang(alice);
+    }
+
+    function test_buyDMT_emit(uint256 amount) public {
+        amount = _bound(amount, DMT_FEE_PER_TRANSFER, type(uint128).max);
+
+        vm.expectEmit(true, true, true, true, address(dmt));
+        emit DarkMatterTokens.DMTMinted(alice, amount);
+        vm.prank(alice);
+        dmt.buy{value: amount}();
+    }
+
+    function test_buyDMT_emit_dependsBasedOnUniversesCreated(uint32 universesCreated, uint256 amount) public {
+        pec.setTotalUniversesCreated(universesCreated);
+
+        uint256 minAmountToSend =
+            pec.DMT_FEE_PER_TRANSFER() * (1e18 + universesCreated * pec.DMT_PRICE_INCREASE_PER_UNIVERSE()) / 1e18;
+
+        amount = _bound(amount, minAmountToSend, type(uint128).max);
+
+        uint256 expectedLogAmount = amount * 1e18 / (1e18 + universesCreated * pec.DMT_PRICE_INCREASE_PER_UNIVERSE());
+
+        vm.expectEmit(true, true, true, true, address(dmt));
+        emit DarkMatterTokens.DMTMinted(alice, expectedLogAmount);
+        vm.prank(alice);
+        dmt.buy{value: amount}();
+    }
+
+    function test_burnDMT_emit(uint256 amount) public {
+        amount = _bound(amount, DMT_FEE_PER_TRANSFER, type(uint128).max);
+
+        vm.prank(alice);
+        dmt.buy{value: amount}();
+
+        uint256 minted = amount * 1e18 / (1e18 + pec.totalUniversesCreated() * pec.DMT_PRICE_INCREASE_PER_UNIVERSE());
+
+        vm.expectEmit(true, true, true, true, address(dmt));
+        emit DarkMatterTokens.DMTBurned(address(pec), minted);
+
+        vm.prank(address(pec));
+        dmt.burn(alice, minted);
+    }
+
+    function test_proposeNewFeeReceiver_emit() public {
+        vm.expectEmit(true, true, true, true, address(prizePool));
+        emit PrizePool.NewFeeReceiverProposed(bob);
+
+        vm.prank(feeReceiver);
+        prizePool.proposeNewFeeReceiver(bob);
+    }
+
+    function test_acceptNewFeeReceiver_emit() public {
+        vm.prank(feeReceiver);
+        prizePool.proposeNewFeeReceiver(bob);
+
+        vm.expectEmit(true, true, true, true, address(prizePool));
+        emit PrizePool.NewFeeReceiverAccepted(bob);
+
+        vm.prank(bob);
+        prizePool.acceptFeeReceiver();
+    }
 }
 
-/*
-Events to add
-
-
-event ElementsFused(address indexed user, uint256 level, bool isMatter, uint256 amountOfLinesFused);
-event ElementsBurned(address indexed user, uint256[] ids, uint256[] values);
-event AuthorizeTransferChanged(
-    address indexed from, address indexed to, uint256 id, uint256 oldValue, uint256 newValue
-);
-event AddressSetAsAuthorized(address indexed from, address indexed to, bool isAuthorized);
-event BigBangExploded(address indexed user, uint256 prize);
-
-
-event DMTBought(address from, uint256 amount);
-event DMTBurned(address from, uint256 amount);
-
-
-
-event NewFeeReceiverProposed(address);
-event NewFeeReceiverAccepted(address);
-*/

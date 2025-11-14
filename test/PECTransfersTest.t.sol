@@ -3,15 +3,9 @@ pragma solidity ^0.8.20;
 
 import {PeriodicElementsCollection} from "src/PeriodicElementsCollection.sol";
 import {DarkMatterTokens} from "src/DarkMatterTokens.sol";
-import {ElementsData} from "src/ElementsData.sol";
-import {HelperConfig} from "script/HelperConfig.s.sol";
-import {PECDeployer} from "script/PECDeployer.s.sol";
-import {PECTestContract} from "test/contracts/PECTestContract.sol";
-
-import {Test, console2} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {VRFCoordinatorV2_5Mock} from "@chainlink/contracts/src/v0.8/vrf/mocks/VRFCoordinatorV2_5Mock.sol";
 import {PECBaseTest} from "test/PECBaseTest.t.sol";
-import {IERC1155Errors} from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 import {IERC20Errors} from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 
 contract PECTransfersTest is PECBaseTest {
@@ -228,7 +222,17 @@ contract PECTransfersTest is PECBaseTest {
     function test_buyDmtRevertsWhenNotEnoughEtherSent(uint256 value) public {
         value = bound(value, 0, DMT_FEE_PER_TRANSFER - 1);
 
-        vm.expectRevert(DarkMatterTokens.DMT__NotEnoughEtherSent.selector);
+        vm.expectRevert(abi.encodeWithSelector(DarkMatterTokens.DMT__NotEnoughEtherSent.selector, DMT_FEE_PER_TRANSFER));
         dmt.buy{value: value}();
+    }
+
+    function test_universesIncreaseMinPrice(uint32 universesCreated) public {
+        pec.setTotalUniversesCreated(universesCreated);
+
+        uint256 minAmountToSend =
+            pec.DMT_FEE_PER_TRANSFER() * (1e18 + universesCreated * pec.DMT_PRICE_INCREASE_PER_UNIVERSE()) / 1e18;
+
+        vm.expectRevert(abi.encodeWithSelector(DarkMatterTokens.DMT__NotEnoughEtherSent.selector, minAmountToSend));
+        dmt.buy{value: 1}();
     }
 }
