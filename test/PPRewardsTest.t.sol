@@ -1,14 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {PeriodicElementsCollection} from "src/PeriodicElementsCollection.sol";
 import {PrizePool} from "src/PrizePool.sol";
 import {WithdrawalPool} from "src/WithdrawalPool.sol";
-import {DarkMatterTokens} from "src/DarkMatterTokens.sol";
 import {RevertOnReceive} from "test/contracts/PECTestContract.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {Test} from "forge-std/Test.sol";
-import {VRFCoordinatorV2_5Mock} from "@chainlink/contracts/src/v0.8/vrf/mocks/VRFCoordinatorV2_5Mock.sol";
 import {PECBaseTest} from "test/PECBaseTest.t.sol";
 
 contract PPRewardsTest is PECBaseTest {

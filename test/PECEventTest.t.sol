@@ -208,7 +208,7 @@ contract PECEventTest is PECBaseTest {
         uint256 minted = amount * 1e18 / (1e18 + pec.totalUniversesCreated() * pec.DMT_PRICE_INCREASE_PER_UNIVERSE());
 
         vm.expectEmit(true, true, true, true, address(dmt));
-        emit DarkMatterTokens.DMTBurned(address(pec), minted);
+        emit DarkMatterTokens.DMTBurned(alice, minted);
 
         vm.prank(address(pec));
         dmt.burn(alice, minted);

@@ -2,11 +2,8 @@
 pragma solidity ^0.8.20;
 
 import {PeriodicElementsCollection} from "src/PeriodicElementsCollection.sol";
-import {DarkMatterTokens} from "src/DarkMatterTokens.sol";
-import {Test, console2} from "forge-std/Test.sol";
-import {VRFCoordinatorV2_5Mock} from "@chainlink/contracts/src/v0.8/vrf/mocks/VRFCoordinatorV2_5Mock.sol";
+import {console2} from "forge-std/Test.sol";
 import {PECBaseTest} from "test/PECBaseTest.t.sol";
-import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 
 contract PECFuseTest is PECBaseTest {
     function test_useCaseLevelUp() public {

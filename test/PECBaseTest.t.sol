@@ -11,7 +11,7 @@ import {PECDeployer} from "script/PECDeployer.s.sol";
 import {PECTestContract} from "test/contracts/PECTestContract.sol";
 import {IElementsData} from "src/interfaces/IElementsData.sol";
 
-import {Test, console} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {VRFCoordinatorV2_5Mock} from "@chainlink/contracts/src/v0.8/vrf/mocks/VRFCoordinatorV2_5Mock.sol";
 
 contract PECBaseTest is Test {

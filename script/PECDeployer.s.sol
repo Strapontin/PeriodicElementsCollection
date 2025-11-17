@@ -3,11 +3,9 @@ pragma solidity ^0.8.20;
 
 import {PeriodicElementsCollection} from "../src/PeriodicElementsCollection.sol";
 import {PECTestContract} from "../test/contracts/PECTestContract.sol";
-import {ElementsData} from "../src/ElementsData.sol";
 import {IElementsData} from "../src/interfaces/IElementsData.sol";
 
-import {Script, console} from "forge-std/Script.sol";
-import {VRFCoordinatorV2_5Mock} from "@chainlink/contracts/src/v0.8/vrf/mocks/VRFCoordinatorV2_5Mock.sol";
+import {Script} from "forge-std/Script.sol";
 
 import {HelperConfig} from "./HelperConfig.s.sol";
 import {CreateSubscription, AddConsumer} from "./VRFInteractions.s.sol";
