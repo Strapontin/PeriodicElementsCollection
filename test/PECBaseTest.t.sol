@@ -15,6 +15,7 @@ import {Test} from "forge-std/Test.sol";
 import {VRFCoordinatorV2_5Mock} from "@chainlink/contracts/src/v0.8/vrf/mocks/VRFCoordinatorV2_5Mock.sol";
 
 contract PECBaseTest is Test {
+    uint256 public MAX_FREE_PACKS;
     uint256 public ELEMENTS_IN_PACK;
     uint256 public NUM_MAX_PACKS_MINTED_AT_ONCE;
     uint256 public PACK_PRICE;
@@ -51,6 +52,7 @@ contract PECBaseTest is Test {
         prizePool = pec.prizePool();
         withdrawalPool = prizePool.withdrawalPool();
 
+        MAX_FREE_PACKS = pec.MAX_FREE_PACKS();
         ELEMENTS_IN_PACK = pec.ELEMENTS_IN_PACK();
         NUM_MAX_PACKS_MINTED_AT_ONCE = pec.NUM_MAX_PACKS_MINTED_AT_ONCE();
         PACK_PRICE = pec.PACK_PRICE();
@@ -94,8 +96,8 @@ contract BasicTests is PECBaseTest {
         assertEq(1.008 * 1_000, ram);
         assertEq(1, level);
 
-        uint256 expectedRAM = 1e18 / ram;
-        assertEq(expectedRAM, pec.getElementArtificialRAMWeight(alice, 1));
+        uint256 expectedRam = 1e18 / ram;
+        assertEq(expectedRam, pec.getElementArtificialRamWeight(alice, 1));
     }
 
     function test_elementsLevelIsCorrect() public view {
@@ -116,13 +118,13 @@ contract BasicTests is PECBaseTest {
 
     function test_pecConstructor() public {
         ElementsData.ElementDataStruct[] memory eds = new ElementsData.ElementDataStruct[](7);
-        eds[0] = IElementsData.ElementDataStruct({number: 1, name: "", symbol: "", initialRAM: 0, level: 1});
-        eds[1] = IElementsData.ElementDataStruct({number: 2, name: "", symbol: "", initialRAM: 0, level: 2});
-        eds[2] = IElementsData.ElementDataStruct({number: 3, name: "", symbol: "", initialRAM: 0, level: 3});
-        eds[3] = IElementsData.ElementDataStruct({number: 4, name: "", symbol: "", initialRAM: 0, level: 4});
-        eds[4] = IElementsData.ElementDataStruct({number: 5, name: "", symbol: "", initialRAM: 0, level: 5});
-        eds[5] = IElementsData.ElementDataStruct({number: 6, name: "", symbol: "", initialRAM: 0, level: 6});
-        eds[6] = IElementsData.ElementDataStruct({number: 7, name: "", symbol: "", initialRAM: 0, level: 7});
+        eds[0] = IElementsData.ElementDataStruct({number: 1, name: "", symbol: "", initialRam: 0, level: 1});
+        eds[1] = IElementsData.ElementDataStruct({number: 2, name: "", symbol: "", initialRam: 0, level: 2});
+        eds[2] = IElementsData.ElementDataStruct({number: 3, name: "", symbol: "", initialRam: 0, level: 3});
+        eds[3] = IElementsData.ElementDataStruct({number: 4, name: "", symbol: "", initialRam: 0, level: 4});
+        eds[4] = IElementsData.ElementDataStruct({number: 5, name: "", symbol: "", initialRam: 0, level: 5});
+        eds[5] = IElementsData.ElementDataStruct({number: 6, name: "", symbol: "", initialRam: 0, level: 6});
+        eds[6] = IElementsData.ElementDataStruct({number: 7, name: "", symbol: "", initialRam: 0, level: 7});
 
         new PeriodicElementsCollection(0, address(this), eds, msg.sender);
     }
@@ -147,5 +149,9 @@ contract BasicTests is PECBaseTest {
         uint256 elementsExpected = amount * 5 / PACK_PRICE;
         assertEq(pec.balanceOf(alice, 1), elementsExpected);
         assertEq(pec.balanceOf(alice, 2), elementsExpected);
+    }
+
+    function test_MaxFreePacksShouldBeTwoWeeks() public view {
+        assertEq(MAX_FREE_PACKS, 14);
     }
 }

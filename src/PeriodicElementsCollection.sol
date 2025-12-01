@@ -47,15 +47,16 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
         Minted
     }
 
-    struct VRFState {
+    struct VrfState {
         address minterAddress;
         uint256[] randomWords;
         VRFStatus status;
         uint256 levelToMint;
     }
 
-    mapping(uint256 => VRFState) public requestIdToVRFState;
+    mapping(uint256 => VrfState) public requestIdToVrfState;
 
+    uint256 public constant MAX_FREE_PACKS = 14;
     uint256 public constant ELEMENTS_IN_PACK = 5;
     uint256 public constant NUM_MAX_PACKS_MINTED_AT_ONCE = 100;
     uint256 public constant PACK_PRICE = 0.002 ether;
@@ -143,9 +144,9 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
             })
         );
 
-        requestIdToVRFState[requestId].minterAddress = msg.sender;
-        requestIdToVRFState[requestId].status = VRFStatus.PendingVRFCallback;
-        requestIdToVRFState[requestId].levelToMint = levelToMint;
+        requestIdToVrfState[requestId].minterAddress = msg.sender;
+        requestIdToVrfState[requestId].status = VRFStatus.PendingVRFCallback;
+        requestIdToVrfState[requestId].levelToMint = levelToMint;
     }
 
     function mintFreePacks() external {
@@ -164,9 +165,9 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
 
         lastFreeMintFromUsers[msg.sender] = startOfTheDay;
 
-        // Max 7 days free minting
-        if (numPacksMinted > 7) {
-            numPacksMinted = 7;
+        // Max days free minting
+        if (numPacksMinted > MAX_FREE_PACKS) {
+            numPacksMinted = MAX_FREE_PACKS;
         }
 
         uint256[] memory ids = new uint256[](2);
@@ -183,19 +184,19 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
     }
 
     function fulfillRandomWords(uint256 requestId, uint256[] calldata randomWords) internal virtual override {
-        requestIdToVRFState[requestId].randomWords = randomWords;
-        requestIdToVRFState[requestId].status = VRFStatus.ReadyToMint;
+        requestIdToVrfState[requestId].randomWords = randomWords;
+        requestIdToVrfState[requestId].status = VRFStatus.ReadyToMint;
 
-        address user = requestIdToVRFState[requestId].minterAddress;
+        address user = requestIdToVrfState[requestId].minterAddress;
         emit ElementsReadyToMint(user);
     }
 
     function unpackRandomMatter(uint256 requestId) external returns (uint256[] memory ids, uint256[] memory values) {
-        VRFState memory vrfState = requestIdToVRFState[requestId];
+        VrfState memory vrfState = requestIdToVrfState[requestId];
 
         if (vrfState.status == VRFStatus.Minted) revert PEC__RequestIdAlreadyMinted();
         if (vrfState.status != VRFStatus.ReadyToMint) revert PEC__NotInReadyToMintState(vrfState.status);
-        requestIdToVRFState[requestId].status = VRFStatus.Minted;
+        requestIdToVrfState[requestId].status = VRFStatus.Minted;
 
         ids = new uint256[](vrfState.randomWords.length);
         values = new uint256[](vrfState.randomWords.length);
@@ -203,7 +204,7 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
 
         // Process each randomWord to determine the tokenId and its quantity
         uint256[] memory tokenIds = pickRandomElementAvailable(
-            vrfState.minterAddress, vrfState.randomWords, requestIdToVRFState[requestId].levelToMint
+            vrfState.minterAddress, vrfState.randomWords, requestIdToVrfState[requestId].levelToMint
         );
 
         for (uint256 tokenIndex = 0; tokenIndex < tokenIds.length; tokenIndex++) {
@@ -361,11 +362,11 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
     }
 
     function _payFees(address from, address to, uint256[] memory values) internal {
-        _burnFeeDMT(from, values);
-        _burnFeeDMT(to, values);
+        _burnFeeDmt(from, values);
+        _burnFeeDmt(to, values);
     }
 
-    function _burnFeeDMT(address user, uint256[] memory values) internal {
+    function _burnFeeDmt(address user, uint256[] memory values) internal {
         // If the user is not a player, no fees to pay
         if (usersLevel[user] == 0) {
             return;

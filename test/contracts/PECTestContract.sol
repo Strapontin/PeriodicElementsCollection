@@ -26,8 +26,8 @@ contract PECTestContract is PeriodicElementsCollection {
         amountTransfers[user] = value;
     }
 
-    function getVRFStateFromRequestId(uint256 requestId) public view returns (VRFState memory) {
-        return requestIdToVRFState[requestId];
+    function getVrfStateFromRequestId(uint256 requestId) public view returns (VrfState memory) {
+        return requestIdToVrfState[requestId];
     }
 
     function forceMint(address user, uint256 id, uint256 value) public {

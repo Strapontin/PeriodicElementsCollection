@@ -78,7 +78,7 @@ abstract contract ElementsData is IElementsData {
         elementsWeight = new uint256[](availableElementsLength);
 
         for (uint256 i = 0; i < availableElementsLength; i++) {
-            elementsWeight[i] = getElementArtificialRAMWeight(user, elementsUnlocked[i]);
+            elementsWeight[i] = getElementArtificialRamWeight(user, elementsUnlocked[i]);
             totalWeight += elementsWeight[i];
         }
     }
@@ -92,16 +92,16 @@ abstract contract ElementsData is IElementsData {
         return elementsUnlockedUnderLevel[level];
     }
 
-    function getElementArtificialRAMWeight(address user, uint256 elementNumber)
+    function getElementArtificialRamWeight(address user, uint256 elementNumber)
         public
         view
-        returns (uint256 artificialRAM)
+        returns (uint256 artificialRam)
     {
-        uint256 elementBaseRAM = elementsData[elementNumber].initialRAM;
+        uint256 elementBaseRam = elementsData[elementNumber].initialRam;
         uint256 numBurnedTimes = burnedTimes[user][elementNumber];
 
-        // elementBaseRAM is set in deployer
-        artificialRAM = 1e18 / (elementBaseRAM + (numBurnedTimes * 100));
+        // elementBaseRam is set in deployer
+        artificialRam = 1e18 / (elementBaseRam + (numBurnedTimes * 100));
     }
 
     function getElementsAtLevel(uint256 level) public view returns (uint256[] memory) {

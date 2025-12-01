@@ -63,9 +63,8 @@ contract PECBigBangTest is PECBaseTest {
         universesCreated = uint32(bound(universesCreated, 0, 1_000_000));
         pec.setTotalUniversesCreated(universesCreated);
 
-        uint256 expected =
-            pec.DMT_FEE_PER_TRANSFER() * (1e18 + uint256(universesCreated) * pec.DMT_PRICE_INCREASE_PER_UNIVERSE())
-            / 1e18;
+        uint256 expected = pec.DMT_FEE_PER_TRANSFER()
+            * (1e18 + uint256(universesCreated) * pec.DMT_PRICE_INCREASE_PER_UNIVERSE()) / 1e18;
         assertEq(dmt.minAmountToSendToMint(), expected);
     }
 }

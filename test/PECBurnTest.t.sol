@@ -9,8 +9,8 @@ contract PECBurnTest is PECBaseTest {
     function test_increaseRelativeAtomicMassIncrease() public {
         pec.mintAll(alice);
 
-        uint256 hydrogenRamBefore = pec.getElementArtificialRAMWeight(alice, 1);
-        uint256 heliumRamBefore = pec.getElementArtificialRAMWeight(alice, 2);
+        uint256 hydrogenRamBefore = pec.getElementArtificialRamWeight(alice, 1);
+        uint256 heliumRamBefore = pec.getElementArtificialRamWeight(alice, 2);
 
         uint256[] memory ids = new uint256[](2);
         uint256[] memory values = new uint256[](2);
@@ -22,8 +22,8 @@ contract PECBurnTest is PECBaseTest {
         vm.prank(alice);
         pec.increaseRelativeAtomicMass(ids, values);
 
-        uint256 hydrogenRamAfter = pec.getElementArtificialRAMWeight(alice, 1);
-        uint256 heliumRamAfter = pec.getElementArtificialRAMWeight(alice, 2);
+        uint256 hydrogenRamAfter = pec.getElementArtificialRamWeight(alice, 1);
+        uint256 heliumRamAfter = pec.getElementArtificialRamWeight(alice, 2);
 
         assertGt(hydrogenRamBefore, hydrogenRamAfter);
         assertGt(heliumRamBefore, heliumRamAfter);
@@ -65,12 +65,12 @@ contract PECBurnTest is PECBaseTest {
 
         // since bob burned one more time than alice, we expect him to have a lower RAM weight
         assertGt(
-            pec.getElementArtificialRAMWeight(alice, 1 + (isMatter ? 0 : ANTIMATTER_OFFSET)),
-            pec.getElementArtificialRAMWeight(bob, 1 + (isMatter ? 0 : ANTIMATTER_OFFSET))
+            pec.getElementArtificialRamWeight(alice, 1 + (isMatter ? 0 : ANTIMATTER_OFFSET)),
+            pec.getElementArtificialRamWeight(bob, 1 + (isMatter ? 0 : ANTIMATTER_OFFSET))
         );
         assertGt(
-            pec.getElementArtificialRAMWeight(alice, 2 + (isMatter ? 0 : ANTIMATTER_OFFSET)),
-            pec.getElementArtificialRAMWeight(bob, 2 + (isMatter ? 0 : ANTIMATTER_OFFSET))
+            pec.getElementArtificialRamWeight(alice, 2 + (isMatter ? 0 : ANTIMATTER_OFFSET)),
+            pec.getElementArtificialRamWeight(bob, 2 + (isMatter ? 0 : ANTIMATTER_OFFSET))
         );
     }
 
@@ -110,11 +110,11 @@ contract PECBurnTest is PECBaseTest {
         vm.startPrank(alice);
         for (uint256 i = 0; i < 30; i++) {
             // Before the 30th burn, Helium's RAM is lower than Hydrogen's
-            assertLt(pec.getElementArtificialRAMWeight(alice, 2), pec.getElementArtificialRAMWeight(alice, 1));
+            assertLt(pec.getElementArtificialRamWeight(alice, 2), pec.getElementArtificialRamWeight(alice, 1));
             pec.increaseRelativeAtomicMass(ids, values);
         }
 
         // After the 30th burn, Hydrogen's RAM is higher than Helium's
-        assertGt(pec.getElementArtificialRAMWeight(alice, 2), pec.getElementArtificialRAMWeight(alice, 1));
+        assertGt(pec.getElementArtificialRamWeight(alice, 2), pec.getElementArtificialRamWeight(alice, 1));
     }
 }

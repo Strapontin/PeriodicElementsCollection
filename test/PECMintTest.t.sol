@@ -22,7 +22,7 @@ contract PECMintTest is PECBaseTest {
         // Status is now Pending for VRF Callback
         assertEq(
             uint256(PeriodicElementsCollection.VRFStatus.PendingVRFCallback),
-            uint256(pec.getVRFStateFromRequestId(requestId).status)
+            uint256(pec.getVrfStateFromRequestId(requestId).status)
         );
 
         vm.prank(address(vrfCoordinator));
@@ -31,7 +31,7 @@ contract PECMintTest is PECBaseTest {
         // Status is now Ready To Mint (need EOA call)
         assertEq(
             uint256(PeriodicElementsCollection.VRFStatus.ReadyToMint),
-            uint256(pec.getVRFStateFromRequestId(requestId).status)
+            uint256(pec.getVrfStateFromRequestId(requestId).status)
         );
 
         pec.unpackRandomMatter(requestId);
@@ -39,7 +39,7 @@ contract PECMintTest is PECBaseTest {
         // Status is now Minted
         assertEq(
             uint256(PeriodicElementsCollection.VRFStatus.Minted),
-            uint256(pec.getVRFStateFromRequestId(requestId).status)
+            uint256(pec.getVrfStateFromRequestId(requestId).status)
         );
     }
 
@@ -61,7 +61,7 @@ contract PECMintTest is PECBaseTest {
         vm.startPrank(alice);
         pec.mintFreePacks();
 
-        assertEq(pec.totalSupply(), 70);
+        assertEq(pec.totalSupply(), MAX_FREE_PACKS * 10);
     }
 
     function test_mintFreeTwiceShouldNotGiveMore() public {
@@ -72,10 +72,11 @@ contract PECMintTest is PECBaseTest {
         vm.expectRevert(PeriodicElementsCollection.PEC__NoPackToMint.selector);
         pec.mintFreePacks();
 
-        assertEq(pec.totalSupply(), 70);
+        assertEq(pec.totalSupply(), MAX_FREE_PACKS * 10);
     }
 
     function test_mintFreeEveryDayShouldGive1Pack() public {
+        uint256 initialFreeMintingTotal = MAX_FREE_PACKS * 10;
         vm.warp(block.timestamp + 1e18);
         vm.startPrank(alice);
         pec.mintFreePacks();
@@ -83,17 +84,17 @@ contract PECMintTest is PECBaseTest {
         vm.warp(block.timestamp + 1 days);
 
         pec.mintFreePacks();
-        assertEq(pec.totalSupply(), 80);
+        assertEq(pec.totalSupply(), initialFreeMintingTotal + 10);
 
         vm.warp(block.timestamp + 1 days);
 
         pec.mintFreePacks();
-        assertEq(pec.totalSupply(), 90);
+        assertEq(pec.totalSupply(), initialFreeMintingTotal + 20);
 
         vm.warp(block.timestamp + 1 days);
 
         pec.mintFreePacks();
-        assertEq(pec.totalSupply(), 100);
+        assertEq(pec.totalSupply(), initialFreeMintingTotal + 30);
     }
 
     function test_shouldNotMintMoreThan100RandomWords(uint32 packsToMint) public fundSubscriptionMax {
@@ -106,7 +107,7 @@ contract PECMintTest is PECBaseTest {
 
         // After fulfillRandomWords is called, the state contains the amount of words requested
         vrfCoordinator.fulfillRandomWords(requestId, address(pec));
-        PeriodicElementsCollection.VRFState memory state = pec.getVRFStateFromRequestId(requestId);
+        PeriodicElementsCollection.VrfState memory state = pec.getVrfStateFromRequestId(requestId);
 
         assertGt(state.randomWords.length, 0);
         assertLe(state.randomWords.length, NUM_MAX_PACKS_MINTED_AT_ONCE * ELEMENTS_IN_PACK);
@@ -259,7 +260,7 @@ contract PECMintTest is PECBaseTest {
         uint256 requestId = 0;
 
         // Status == None
-        assert(pec.getVRFStateFromRequestId(requestId).status == PeriodicElementsCollection.VRFStatus.None);
+        assert(pec.getVrfStateFromRequestId(requestId).status == PeriodicElementsCollection.VRFStatus.None);
         vm.expectRevert(
             abi.encodeWithSelector(
                 PeriodicElementsCollection.PEC__NotInReadyToMintState.selector,
@@ -271,7 +272,7 @@ contract PECMintTest is PECBaseTest {
         // Status == PendingVRFCallback
         requestId = pec.mintPack{value: PACK_PRICE}();
         assert(
-            pec.getVRFStateFromRequestId(requestId).status == PeriodicElementsCollection.VRFStatus.PendingVRFCallback
+            pec.getVrfStateFromRequestId(requestId).status == PeriodicElementsCollection.VRFStatus.PendingVRFCallback
         );
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -288,7 +289,7 @@ contract PECMintTest is PECBaseTest {
         vrfCoordinator.fulfillRandomWords(requestId, address(pec));
         pec.unpackRandomMatter(requestId);
 
-        assert(pec.getVRFStateFromRequestId(requestId).status == PeriodicElementsCollection.VRFStatus.Minted);
+        assert(pec.getVrfStateFromRequestId(requestId).status == PeriodicElementsCollection.VRFStatus.Minted);
         vm.expectRevert(PeriodicElementsCollection.PEC__RequestIdAlreadyMinted.selector);
         pec.unpackRandomMatter(requestId);
     }

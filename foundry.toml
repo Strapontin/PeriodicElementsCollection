@@ -16,3 +16,6 @@ seed = "0x1"
 runs = 2560
 depth = 32
 fail_on_revert = true
+
+[lint]
+lint_on_build = false
