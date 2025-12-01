@@ -2,6 +2,7 @@
 // Compatible with OpenZeppelin Contracts ^5.0.0
 pragma solidity ^0.8.20;
 
+import {IPeriodicElementsCollection} from "./interfaces/IPeriodicElementsCollection.sol";
 import {ElementsData} from "./ElementsData.sol";
 import {DarkMatterTokens} from "./DarkMatterTokens.sol";
 import {PrizePool} from "./PrizePool.sol";
@@ -16,7 +17,7 @@ import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/V
 /// @custom:security-contact
 /// "strapontin" on discord
 /// https://x.com/0xStrapontin on X
-contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, ElementsData {
+contract PeriodicElementsCollection is IPeriodicElementsCollection, ERC1155Supply, VRFConsumerBaseV2Plus, ElementsData {
     error PEC__NoPackToMint();
     error PEC__UserDidNotPayEnough(uint256 amountMissing);
     error PEC__EthNotSend();
@@ -39,20 +40,6 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
     );
     event AddressSetAsAuthorized(address indexed from, address indexed to, bool isAuthorized);
     event BigBangExploded(address indexed user, uint256 prize);
-
-    enum VRFStatus {
-        None,
-        PendingVRFCallback,
-        ReadyToMint,
-        Minted
-    }
-
-    struct VrfState {
-        address minterAddress;
-        uint256[] randomWords;
-        VRFStatus status;
-        uint256 levelToMint;
-    }
 
     mapping(uint256 => VrfState) public requestIdToVrfState;
 
@@ -118,7 +105,7 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
             numWordsToRequest = uint32(NUM_MAX_PACKS_MINTED_AT_ONCE * ELEMENTS_IN_PACK);
         }
 
-        requestId = generateNewVrfRequest(numWordsToRequest, 0);
+        requestId = _generateNewVrfRequest(numWordsToRequest, 0);
 
         uint256 leftOverEth = msg.value - (numPacksPaid * PACK_PRICE);
         prizePool.playerBoughtPacks{value: msg.value - leftOverEth}(msg.sender);
@@ -132,7 +119,7 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
     }
 
     // levelToMint = 0 => all available elements
-    function generateNewVrfRequest(uint32 numWordsToRequest, uint256 levelToMint) private returns (uint256 requestId) {
+    function _generateNewVrfRequest(uint32 numWordsToRequest, uint256 levelToMint) private returns (uint256 requestId) {
         requestId = s_vrfCoordinator.requestRandomWords(
             VRFV2PlusClient.RandomWordsRequest({
                 keyHash: KEY_HASH,
@@ -203,7 +190,7 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
         uint256 uniqueTokenCount = 0;
 
         // Process each randomWord to determine the tokenId and its quantity
-        uint256[] memory tokenIds = pickRandomElementAvailable(
+        uint256[] memory tokenIds = _pickRandomElementAvailable(
             vrfState.minterAddress, vrfState.randomWords, requestIdToVrfState[requestId].levelToMint
         );
 
@@ -274,7 +261,7 @@ contract PeriodicElementsCollection is ERC1155Supply, VRFConsumerBaseV2Plus, Ele
         emit ElementsFused(msg.sender, levelToBurn, isMatter, lineAmountToBurn);
 
         // Need to request X new random element from the next level
-        return generateNewVrfRequest(lineAmountToBurn, levelToMint);
+        return _generateNewVrfRequest(lineAmountToBurn, levelToMint);
     }
 
     /* Burn Functions */

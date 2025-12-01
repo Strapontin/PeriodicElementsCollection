@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import {IPrizePool} from "./interfaces/IPrizePool.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {WithdrawalPool} from "./WithdrawalPool.sol";
 
 // In this contract, "owner" is PEC
-contract PrizePool is ERC20, Ownable {
+contract PrizePool is IPrizePool, ERC20, Ownable {
     error PP__NotFeeReceiver();
     error PP__NotProposedFeeReceiver();
 

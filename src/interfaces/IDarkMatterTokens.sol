@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 interface IDarkMatterTokens {
-    // function mint(address to, uint256 amount) external;
-
-    }
+    function burn(address from, uint256 amount) external;
+    function buy() external payable;
+    function minAmountToSendToMint() external returns (uint256);
+}

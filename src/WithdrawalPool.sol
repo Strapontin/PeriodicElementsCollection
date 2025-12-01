@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import {IWithdrawalPool} from "./interfaces/IWithdrawalPool.sol";
+
 // This contract acts as a buffer for players to withdraw their winnings
-contract WithdrawalPool {
+contract WithdrawalPool is IWithdrawalPool {
     error WP__NoWinnings();
     error WP__EthNotSend();
 

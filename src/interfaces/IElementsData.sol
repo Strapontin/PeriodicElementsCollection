@@ -9,4 +9,12 @@ interface IElementsData {
         uint256 initialRam; // Initial Relative Atomic Mass of the element
         uint256 level; // Level of the element (from 1 to 7)
     }
+
+    function getRealUserWeightsAtLevel(address user, uint256 level)
+        external
+        returns (uint256[] memory elementsWeight, uint256 totalWeight, uint256[] memory elementsUnlocked);
+    function getElementsUnlockedByPlayer(address user) external returns (uint256[] memory);
+    function getElementsUnlockedUnderLevel(uint256 level) external returns (uint256[] memory);
+    function getElementArtificialRamWeight(address user, uint256 elementNumber) external returns (uint256 artificialRam);
+    function getElementsAtLevel(uint256 level) external returns (uint256[] memory);
 }

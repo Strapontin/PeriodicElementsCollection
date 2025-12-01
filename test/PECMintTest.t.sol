@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import {IPeriodicElementsCollection} from "src/interfaces/IPeriodicElementsCollection.sol";
 import {PeriodicElementsCollection} from "src/PeriodicElementsCollection.sol";
 import {RevertOnReceive} from "test/contracts/PECTestContract.sol";
 import {VRFCoordinatorV2_5Mock} from "@chainlink/contracts/src/v0.8/vrf/mocks/VRFCoordinatorV2_5Mock.sol";
@@ -21,7 +22,7 @@ contract PECMintTest is PECBaseTest {
 
         // Status is now Pending for VRF Callback
         assertEq(
-            uint256(PeriodicElementsCollection.VRFStatus.PendingVRFCallback),
+            uint256(IPeriodicElementsCollection.VRFStatus.PendingVRFCallback),
             uint256(pec.getVrfStateFromRequestId(requestId).status)
         );
 
@@ -30,7 +31,7 @@ contract PECMintTest is PECBaseTest {
 
         // Status is now Ready To Mint (need EOA call)
         assertEq(
-            uint256(PeriodicElementsCollection.VRFStatus.ReadyToMint),
+            uint256(IPeriodicElementsCollection.VRFStatus.ReadyToMint),
             uint256(pec.getVrfStateFromRequestId(requestId).status)
         );
 
@@ -38,7 +39,7 @@ contract PECMintTest is PECBaseTest {
 
         // Status is now Minted
         assertEq(
-            uint256(PeriodicElementsCollection.VRFStatus.Minted),
+            uint256(IPeriodicElementsCollection.VRFStatus.Minted),
             uint256(pec.getVrfStateFromRequestId(requestId).status)
         );
     }
@@ -107,7 +108,7 @@ contract PECMintTest is PECBaseTest {
 
         // After fulfillRandomWords is called, the state contains the amount of words requested
         vrfCoordinator.fulfillRandomWords(requestId, address(pec));
-        PeriodicElementsCollection.VrfState memory state = pec.getVrfStateFromRequestId(requestId);
+        IPeriodicElementsCollection.VrfState memory state = pec.getVrfStateFromRequestId(requestId);
 
         assertGt(state.randomWords.length, 0);
         assertLe(state.randomWords.length, NUM_MAX_PACKS_MINTED_AT_ONCE * ELEMENTS_IN_PACK);
@@ -260,11 +261,11 @@ contract PECMintTest is PECBaseTest {
         uint256 requestId = 0;
 
         // Status == None
-        assert(pec.getVrfStateFromRequestId(requestId).status == PeriodicElementsCollection.VRFStatus.None);
+        assert(pec.getVrfStateFromRequestId(requestId).status == IPeriodicElementsCollection.VRFStatus.None);
         vm.expectRevert(
             abi.encodeWithSelector(
                 PeriodicElementsCollection.PEC__NotInReadyToMintState.selector,
-                PeriodicElementsCollection.VRFStatus.None
+                IPeriodicElementsCollection.VRFStatus.None
             )
         );
         pec.unpackRandomMatter(requestId);
@@ -272,12 +273,12 @@ contract PECMintTest is PECBaseTest {
         // Status == PendingVRFCallback
         requestId = pec.mintPack{value: PACK_PRICE}();
         assert(
-            pec.getVrfStateFromRequestId(requestId).status == PeriodicElementsCollection.VRFStatus.PendingVRFCallback
+            pec.getVrfStateFromRequestId(requestId).status == IPeriodicElementsCollection.VRFStatus.PendingVRFCallback
         );
         vm.expectRevert(
             abi.encodeWithSelector(
                 PeriodicElementsCollection.PEC__NotInReadyToMintState.selector,
-                PeriodicElementsCollection.VRFStatus.PendingVRFCallback
+                IPeriodicElementsCollection.VRFStatus.PendingVRFCallback
             )
         );
         pec.unpackRandomMatter(requestId);
@@ -289,7 +290,7 @@ contract PECMintTest is PECBaseTest {
         vrfCoordinator.fulfillRandomWords(requestId, address(pec));
         pec.unpackRandomMatter(requestId);
 
-        assert(pec.getVrfStateFromRequestId(requestId).status == PeriodicElementsCollection.VRFStatus.Minted);
+        assert(pec.getVrfStateFromRequestId(requestId).status == IPeriodicElementsCollection.VRFStatus.Minted);
         vm.expectRevert(PeriodicElementsCollection.PEC__RequestIdAlreadyMinted.selector);
         pec.unpackRandomMatter(requestId);
     }

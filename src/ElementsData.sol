@@ -28,7 +28,7 @@ abstract contract ElementsData is IElementsData {
     }
 
     // levelToMint > ANTIMATTER_OFFSET => must mint an antimatter
-    function pickRandomElementAvailable(address user, uint256[] memory randomWords, uint256 levelToMint)
+    function _pickRandomElementAvailable(address user, uint256[] memory randomWords, uint256 levelToMint)
         internal
         view
         returns (uint256[] memory result)
