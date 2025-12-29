@@ -91,6 +91,7 @@ contract PeriodicElementsCollection is IPeriodicElementsCollection, ERC1155Suppl
     //     _setURI(newuri);
     // }
 
+    /// @inheritdoc IPeriodicElementsCollection
     function mintPack() external payable returns (uint256 requestId) {
         // If enough ether send, revert
         if (msg.value < PACK_PRICE) revert PEC__UserDidNotPayEnough(PACK_PRICE - msg.value);
@@ -105,6 +106,7 @@ contract PeriodicElementsCollection is IPeriodicElementsCollection, ERC1155Suppl
             numWordsToRequest = uint32(NUM_MAX_PACKS_MINTED_AT_ONCE * ELEMENTS_IN_PACK);
         }
 
+        // 0 means we mint an element available to the user
         requestId = _generateNewVrfRequest(numWordsToRequest, 0);
 
         uint256 leftOverEth = msg.value - (numPacksPaid * PACK_PRICE);
@@ -136,6 +138,7 @@ contract PeriodicElementsCollection is IPeriodicElementsCollection, ERC1155Suppl
         requestIdToVrfState[requestId].levelToMint = levelToMint;
     }
 
+    /// @inheritdoc IPeriodicElementsCollection
     function mintFreePacks() external {
         if (_mintFreePacks(msg.sender) == 0) revert PEC__NoPackToMint();
     }
@@ -178,6 +181,7 @@ contract PeriodicElementsCollection is IPeriodicElementsCollection, ERC1155Suppl
         emit ElementsReadyToMint(user);
     }
 
+    /// @inheritdoc IPeriodicElementsCollection
     function unpackRandomMatter(uint256 requestId) external returns (uint256[] memory ids, uint256[] memory values) {
         VrfState memory vrfState = requestIdToVrfState[requestId];
 
@@ -229,6 +233,7 @@ contract PeriodicElementsCollection is IPeriodicElementsCollection, ERC1155Suppl
         emit ElementsMinted(vrfState.minterAddress, ids, values);
     }
 
+    /// @inheritdoc IPeriodicElementsCollection
     function fuseToNextLevel(uint256 levelToBurn, uint32 lineAmountToBurn, bool isMatter)
         external
         returns (uint256 requestId)
@@ -267,6 +272,7 @@ contract PeriodicElementsCollection is IPeriodicElementsCollection, ERC1155Suppl
     /* Burn Functions */
 
     // This function burns an amount of elements to make them less likely to drop randomly
+    /// @inheritdoc IPeriodicElementsCollection
     function increaseRelativeAtomicMass(uint256[] memory ids, uint256[] memory values) external {
         if (ids.length == 0) revert PEC__IncorrectParameters();
 
@@ -295,6 +301,7 @@ contract PeriodicElementsCollection is IPeriodicElementsCollection, ERC1155Suppl
     // @info: These authorization functions allow `from` to send NFTs to `msg.sender`
     // When a player receives an NFT, they have to pay fees, hence the need to authorize sender.
 
+    /// @inheritdoc IPeriodicElementsCollection
     function addAuthorizeTransfer(address from, uint256 id, uint256 addValue) external {
         uint256 oldValue = authorizedTransfer[msg.sender][from][id];
         authorizedTransfer[msg.sender][from][id] += addValue;
@@ -303,6 +310,7 @@ contract PeriodicElementsCollection is IPeriodicElementsCollection, ERC1155Suppl
         emit AuthorizeTransferChanged(from, msg.sender, id, oldValue, newValue);
     }
 
+    /// @inheritdoc IPeriodicElementsCollection
     function decreaseAuthorizeTransfer(address from, uint256 id, uint256 removeValue) external {
         uint256 oldValue = authorizedTransfer[msg.sender][from][id];
 
@@ -314,6 +322,7 @@ contract PeriodicElementsCollection is IPeriodicElementsCollection, ERC1155Suppl
         emit AuthorizeTransferChanged(from, msg.sender, id, oldValue, newValue);
     }
 
+    /// @inheritdoc IPeriodicElementsCollection
     function setAuthorizedAddressForTransfer(address from, bool isAuthorized) external {
         authorizedAddressForTransfer[msg.sender][from] = isAuthorized;
         emit AddressSetAsAuthorized(from, msg.sender, isAuthorized);
@@ -378,6 +387,7 @@ contract PeriodicElementsCollection is IPeriodicElementsCollection, ERC1155Suppl
 
     /* End the game */
 
+    /// @inheritdoc IPeriodicElementsCollection
     function bigBang(address user) external {
         uint256[] memory allElements = elementsUnlockedUnderLevel[7];
         uint256[] memory idsToBurn = new uint256[](allElements.length * 2);
@@ -421,6 +431,7 @@ contract PeriodicElementsCollection is IPeriodicElementsCollection, ERC1155Suppl
         emit BigBangExploded(user, prize);
     }
 
+    /// @inheritdoc IPeriodicElementsCollection
     function fundSubscription() external payable {
         _mintFreePacks(msg.sender);
 

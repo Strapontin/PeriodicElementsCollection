@@ -25,6 +25,7 @@ contract PrizePool is IPrizePool, ERC20, Ownable {
         withdrawalPool = new WithdrawalPool();
     }
 
+    /// @inheritdoc IPrizePool
     function proposeNewFeeReceiver(address newFeeReceiver) external {
         if (msg.sender != feeReceiver) {
             revert PP__NotFeeReceiver();
@@ -35,6 +36,7 @@ contract PrizePool is IPrizePool, ERC20, Ownable {
         emit NewFeeReceiverProposed(newFeeReceiver);
     }
 
+    /// @inheritdoc IPrizePool
     function acceptFeeReceiver() external {
         if (msg.sender != proposedFeeReceiver) {
             revert PP__NotProposedFeeReceiver();
@@ -46,6 +48,7 @@ contract PrizePool is IPrizePool, ERC20, Ownable {
         emit NewFeeReceiverAccepted(msg.sender);
     }
 
+    /// @inheritdoc IPrizePool
     function playerBoughtPacks(address player) external payable onlyOwner {
         // When players pay a pack, PEC will call this function to store the ether in the pool, and mint shares for the player
         // After the fee deduction, shares are minted to the player, at a ratio of 1:1
@@ -60,6 +63,7 @@ contract PrizePool is IPrizePool, ERC20, Ownable {
         (success);
     }
 
+    /// @inheritdoc IPrizePool
     function playerWon(address player) external onlyOwner returns (uint256 prize) {
         uint256 shares = balanceOf(player);
 
@@ -84,10 +88,12 @@ contract PrizePool is IPrizePool, ERC20, Ownable {
 
     /* View functions */
 
+    /// @inheritdoc IPrizePool
     function estimatedRewardsPerPlayer(address player) external view returns (uint256) {
         return rewardsPerShare(balanceOf(player));
     }
 
+    /// @inheritdoc IPrizePool
     function rewardsPerShare(uint256 shares) public view returns (uint256) {
         return address(this).balance * shares / totalSupply();
     }

@@ -22,11 +22,13 @@ contract DarkMatterTokens is IDarkMatterTokens, ERC20, Ownable {
         pec = PeriodicElementsCollection(msg.sender);
     }
 
+    /// @inheritdoc IDarkMatterTokens
     function burn(address from, uint256 amount) external onlyOwner {
         _burn(from, amount);
         emit DMTBurned(from, amount);
     }
 
+    /// @inheritdoc IDarkMatterTokens
     function buy() external payable {
         uint256 amountToMint =
             msg.value * 1e18 / (1e18 + pec.totalUniversesCreated() * pec.DMT_PRICE_INCREASE_PER_UNIVERSE());
@@ -41,6 +43,7 @@ contract DarkMatterTokens is IDarkMatterTokens, ERC20, Ownable {
         emit DMTMinted(msg.sender, amountToMint);
     }
 
+    /// @inheritdoc IDarkMatterTokens
     function minAmountToSendToMint() public view returns (uint256) {
         return pec.DMT_FEE_PER_TRANSFER() * (1e18 + pec.totalUniversesCreated() * pec.DMT_PRICE_INCREASE_PER_UNIVERSE())
             / 1e18;

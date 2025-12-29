@@ -48,7 +48,10 @@ abstract contract ElementsData is IElementsData {
                     result[rngIndex] = elementsUnlocked[i];
 
                     // 1/10k chances to be antimatter
-                    if (levelToMint > ANTIMATTER_OFFSET || (randomWords[rngIndex] >> 242) % 10_000 == 0) {
+                    if (
+                        levelToMint > ANTIMATTER_OFFSET
+                            || (uint256(keccak256(abi.encode(randomWords[rngIndex])))) % 10_000 == 0
+                    ) {
                         result[rngIndex] += ANTIMATTER_OFFSET;
                     }
 
@@ -60,6 +63,7 @@ abstract contract ElementsData is IElementsData {
 
     /* Public View Functions */
 
+    /// @inheritdoc IElementsData
     function getRealUserWeightsAtLevel(address user, uint256 level)
         public
         view
@@ -83,15 +87,18 @@ abstract contract ElementsData is IElementsData {
         }
     }
 
+    /// @inheritdoc IElementsData
     function getElementsUnlockedByPlayer(address user) public view returns (uint256[] memory) {
         uint256 level = usersLevel[user] == 0 ? 1 : usersLevel[user];
         return elementsUnlockedUnderLevel[level];
     }
 
+    /// @inheritdoc IElementsData
     function getElementsUnlockedUnderLevel(uint256 level) public view returns (uint256[] memory) {
         return elementsUnlockedUnderLevel[level];
     }
 
+    /// @inheritdoc IElementsData
     function getElementArtificialRamWeight(address user, uint256 elementNumber)
         public
         view
@@ -104,6 +111,7 @@ abstract contract ElementsData is IElementsData {
         artificialRam = 1e18 / (elementBaseRam + (numBurnedTimes * 100));
     }
 
+    /// @inheritdoc IElementsData
     function getElementsAtLevel(uint256 level) public view returns (uint256[] memory) {
         return elementsAtLevel[level];
     }

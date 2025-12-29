@@ -10,10 +10,12 @@ contract WithdrawalPool is IWithdrawalPool {
 
     mapping(address => uint256) public winnings;
 
+    /// @inheritdoc IWithdrawalPool
     function newWinnings(address winner) external payable {
         winnings[winner] += msg.value;
     }
 
+    /// @inheritdoc IWithdrawalPool
     function withdrawWinnings() external {
         uint256 amount = winnings[msg.sender];
         if (amount == 0) {
