@@ -120,6 +120,8 @@ contract PeriodicElementsCollection is IPeriodicElementsCollection, ERC1155Suppl
         emit MintRequestInitalized(requestId, msg.sender, numPacksPaid);
     }
 
+    function mintPackWithDMT() TODO
+
     // levelToMint = 0 => all available elements
     function _generateNewVrfRequest(uint32 numWordsToRequest, uint256 levelToMint) private returns (uint256 requestId) {
         requestId = s_vrfCoordinator.requestRandomWords(

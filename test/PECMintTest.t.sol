@@ -162,14 +162,15 @@ contract PECMintTest is PECBaseTest {
     }
 
     function test_mintAntimatter() public fundSubscriptionMax {
-        (, uint256 totalWeight,) = pec.getRealUserWeightsAtLevel(alice, 0);
+        uint256 magicNumberHydrogen = 7825;
+        uint256 magicNumberHelium = 992063492072590;
 
         uint256[] memory randomWords = new uint256[](5);
-        randomWords[0] = 0;
-        randomWords[1] = totalWeight - 1; // Last unlocked element
-        randomWords[2] = totalWeight - 1;
-        randomWords[3] = 0;
-        randomWords[4] = 0;
+        randomWords[0] = magicNumberHydrogen;
+        randomWords[1] = magicNumberHelium;
+        randomWords[2] = magicNumberHelium;
+        randomWords[3] = magicNumberHydrogen;
+        randomWords[4] = magicNumberHydrogen;
 
         vm.prank(alice);
         uint256 requestId = pec.mintPack{value: PACK_PRICE}();
