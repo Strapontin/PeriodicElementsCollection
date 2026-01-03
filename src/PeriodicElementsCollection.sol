@@ -98,13 +98,12 @@ contract PeriodicElementsCollection is IPeriodicElementsCollection, ERC1155Suppl
         _mintFreePacks(msg.sender);
 
         uint256 numPacksPaid = msg.value / PACK_PRICE;
-        uint32 numWordsToRequest = uint32(numPacksPaid * ELEMENTS_IN_PACK);
 
-        // Too many packs minted (because of high msg.value)
         if (numPacksPaid > NUM_MAX_PACKS_MINTED_AT_ONCE) {
             numPacksPaid = NUM_MAX_PACKS_MINTED_AT_ONCE;
-            numWordsToRequest = uint32(NUM_MAX_PACKS_MINTED_AT_ONCE * ELEMENTS_IN_PACK);
         }
+
+        uint32 numWordsToRequest = uint32(numPacksPaid * ELEMENTS_IN_PACK);
 
         // 0 means we mint an element available to the user
         requestId = _generateNewVrfRequest(numWordsToRequest, 0);
@@ -120,7 +119,22 @@ contract PeriodicElementsCollection is IPeriodicElementsCollection, ERC1155Suppl
         emit MintRequestInitalized(requestId, msg.sender, numPacksPaid);
     }
 
-    function mintPackWithDMT() TODO
+    /// @inheritdoc IPeriodicElementsCollection
+    function mintPackWithDmt(uint256 amountPacksToMint) external returns (uint256 requestId) {
+        _mintFreePacks(msg.sender);
+
+        if (amountPacksToMint == 0) amountPacksToMint = 1;
+        if (amountPacksToMint > NUM_MAX_PACKS_MINTED_AT_ONCE) amountPacksToMint = NUM_MAX_PACKS_MINTED_AT_ONCE;
+
+        darkMatterTokens.burn(msg.sender, amountPacksToMint * PACK_PRICE);
+
+        uint32 numWordsToRequest = uint32(amountPacksToMint * ELEMENTS_IN_PACK);
+
+        // 0 means we mint an element available to the user
+        requestId = _generateNewVrfRequest(numWordsToRequest, 0);
+
+        emit MintRequestInitalized(requestId, msg.sender, amountPacksToMint);
+    }
 
     // levelToMint = 0 => all available elements
     function _generateNewVrfRequest(uint32 numWordsToRequest, uint256 levelToMint) private returns (uint256 requestId) {

@@ -27,6 +27,11 @@ interface IPeriodicElementsCollection {
     /// @return requestId Chainlink VRF request ID
     function mintPack() external payable returns (uint256 requestId);
 
+    /// @notice Purchases and requests randomness for a pack of elements
+    /// @dev Requires payment of PACK_PRICE in DMT
+    /// @return requestId Chainlink VRF request ID
+    function mintPackWithDmt(uint256 amountPacksToMint) external returns (uint256 requestId);
+
     /// @notice Mints free starter packs for new players
     function mintFreePacks() external;
 

@@ -15,6 +15,11 @@ interface IPrizePool {
     /// @dev Payable function called when player buys packs
     /// @param player Address of the player buying packs
     function playerBoughtPacks(address player) external payable;
+    
+    /// @notice Records a player's pack purchase and distributes funds
+    /// @dev Packs paid in DMT
+    /// @param player Address of the player buying packs
+    function playerBoughtPacksFromDmt(address player, uint256 dmtBurned) external;
 
     /// @notice Processes a player's win and calculates prize
     /// @param player Address of the winning player

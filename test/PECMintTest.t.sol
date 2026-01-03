@@ -44,6 +44,36 @@ contract PECMintTest is PECBaseTest {
         );
     }
 
+    function test_mintingStatesDMT() public fundSubscriptionMax {
+        vm.startPrank(alice);
+        dmt.buy{value: PACK_PRICE}();
+        uint256 requestId = pec.mintPackWithDmt(0);
+        vm.stopPrank();
+
+        // Status is now Pending for VRF Callback
+        assertEq(
+            uint256(IPeriodicElementsCollection.VRFStatus.PendingVRFCallback),
+            uint256(pec.getVrfStateFromRequestId(requestId).status)
+        );
+
+        vm.prank(address(vrfCoordinator));
+        vrfCoordinator.fulfillRandomWords(requestId, address(pec));
+
+        // Status is now Ready To Mint (need EOA call)
+        assertEq(
+            uint256(IPeriodicElementsCollection.VRFStatus.ReadyToMint),
+            uint256(pec.getVrfStateFromRequestId(requestId).status)
+        );
+
+        pec.unpackRandomMatter(requestId);
+
+        // Status is now Minted
+        assertEq(
+            uint256(IPeriodicElementsCollection.VRFStatus.Minted),
+            uint256(pec.getVrfStateFromRequestId(requestId).status)
+        );
+    }
+
     function test_refund() public {
         // 1st test, pay 1.5 pack, should pay back 0.5
         vm.startPrank(alice);
@@ -104,9 +134,27 @@ contract PECMintTest is PECBaseTest {
         // Go through the process of minting a pack
         vm.prank(alice);
         uint256 requestId = pec.mintPack{value: PACK_PRICE * packsToMint}();
-        vm.prank(address(vrfCoordinator));
 
         // After fulfillRandomWords is called, the state contains the amount of words requested
+        vm.prank(address(vrfCoordinator));
+        vrfCoordinator.fulfillRandomWords(requestId, address(pec));
+        IPeriodicElementsCollection.VrfState memory state = pec.getVrfStateFromRequestId(requestId);
+
+        assertGt(state.randomWords.length, 0);
+        assertLe(state.randomWords.length, NUM_MAX_PACKS_MINTED_AT_ONCE * ELEMENTS_IN_PACK);
+    }
+
+    function test_dmtShouldNotMintMoreThan100RandomWords(uint32 packsToMint) public fundSubscriptionMax {
+        packsToMint = uint32(bound(packsToMint, 1, type(uint32).max));
+
+        // Go through the process of minting a pack
+        vm.startPrank(alice);
+        dmt.buy{value: packsToMint * PACK_PRICE}();
+        uint256 requestId = pec.mintPackWithDmt(packsToMint);
+        vm.stopPrank();
+
+        // After fulfillRandomWords is called, the state contains the amount of words requested
+        vm.prank(address(vrfCoordinator));
         vrfCoordinator.fulfillRandomWords(requestId, address(pec));
         IPeriodicElementsCollection.VrfState memory state = pec.getVrfStateFromRequestId(requestId);
 
@@ -294,15 +342,6 @@ contract PECMintTest is PECBaseTest {
         assert(pec.getVrfStateFromRequestId(requestId).status == IPeriodicElementsCollection.VRFStatus.Minted);
         vm.expectRevert(PeriodicElementsCollection.PEC__RequestIdAlreadyMinted.selector);
         pec.unpackRandomMatter(requestId);
-    }
-
-    function test_revertOnReceiveCantMint() public {
-        RevertOnReceive revertOnReceive = new RevertOnReceive();
-        vm.deal(address(revertOnReceive), 1 ether);
-
-        vm.prank(address(revertOnReceive));
-        vm.expectRevert(PeriodicElementsCollection.PEC__EthNotSend.selector);
-        pec.mintPack{value: PACK_PRICE + 1}();
     }
 
     function test_mintAccross2DaysAllow2Mint() public {

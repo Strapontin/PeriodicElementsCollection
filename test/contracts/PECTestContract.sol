@@ -71,10 +71,6 @@ contract PECTestContract is PeriodicElementsCollection {
 }
 
 contract RevertOnReceive {
-    // function onERC1155Received(address, address, uint256, uint256, bytes calldata) external pure returns (bytes4) {
-    //     return IERC1155Receiver.onERC1155Received.selector;
-    // }
-
     function onERC1155BatchReceived(address, address, uint256[] calldata, uint256[] calldata, bytes calldata)
         external
         pure
@@ -82,4 +78,6 @@ contract RevertOnReceive {
     {
         return IERC1155Receiver.onERC1155BatchReceived.selector;
     }
+
+    // receive() external payable {}
 }
