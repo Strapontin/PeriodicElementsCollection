@@ -18,7 +18,7 @@ contract DarkMatterTokens is IDarkMatterTokens, ERC20, Ownable {
     PeriodicElementsCollection public immutable pec;
 
     constructor() ERC20("DarkMatterTokens", "DMT") Ownable(msg.sender) {
-        pec = PeriodicElementsCollection(msg.sender);
+        pec = PeriodicElementsCollection(payable(msg.sender));
     }
 
     /// @inheritdoc IDarkMatterTokens

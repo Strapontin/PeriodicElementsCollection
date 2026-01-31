@@ -263,8 +263,6 @@ contract PeriodicElementsCollection is IPeriodicElementsCollection, ERC1155Suppl
         if (levelToBurn < 1 || levelToBurn > 7) revert PEC__LevelDoesNotExist();
         if (levelToBurn == 7 && !isMatter) revert PEC__CantFuseLastLevelOfAntimatter();
 
-        _mintFreePacks(msg.sender);
-
         uint256 amountElements = elementsAtLevel[levelToBurn].length;
         uint256 matterOffset = isMatter ? 0 : ANTIMATTER_OFFSET;
 
@@ -307,8 +305,8 @@ contract PeriodicElementsCollection is IPeriodicElementsCollection, ERC1155Suppl
         // Update the RAM of the elements
         for (uint256 i = 0; i < ids.length; i++) {
             if (ids[i] > ANTIMATTER_OFFSET) {
-                // Burning an antimatter increase RAM by 100
-                burnedTimes[msg.sender][ids[i]] += values[i] * 100 * userUniversesCreated;
+                // Burning an antimatter increase RAM by 100 (using 1_000 here because it multiplies by 0.1 in `getElementArtificialRamWeight`)
+                burnedTimes[msg.sender][ids[i]] += values[i] * 1_000 * userUniversesCreated;
             } else {
                 burnedTimes[msg.sender][ids[i]] += values[i] * userUniversesCreated;
             }
@@ -453,9 +451,11 @@ contract PeriodicElementsCollection is IPeriodicElementsCollection, ERC1155Suppl
     }
 
     /// @inheritdoc IPeriodicElementsCollection
-    function fundSubscription() external payable {
-        _mintFreePacks(msg.sender);
+    function fundSubscription() public payable {
+        _fundSubscription();
+    }
 
+    function _fundSubscription() private {
         // When users fund the subscription, they get a small amount of elements from it
         uint256[] memory ids = new uint256[](2);
         uint256[] memory values = new uint256[](2);
@@ -472,5 +472,9 @@ contract PeriodicElementsCollection is IPeriodicElementsCollection, ERC1155Suppl
         emit ElementsMinted(msg.sender, ids, values);
 
         s_vrfCoordinator.fundSubscriptionWithNative{value: msg.value}(SUBSCRIPTION_ID);
+    }
+
+    receive() external payable {
+        _fundSubscription();
     }
 }

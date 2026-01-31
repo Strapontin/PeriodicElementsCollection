@@ -47,7 +47,7 @@ contract PECBaseTest is Test {
     function setUp() public {
         address pecTestContract;
         (pecTestContract, helperConfig) = (new PECDeployer()).deployContract(feeReceiver);
-        pec = PECTestContract(pecTestContract);
+        pec = PECTestContract(payable(pecTestContract));
         dmt = pec.darkMatterTokens();
         prizePool = pec.prizePool();
         withdrawalPool = prizePool.withdrawalPool();
