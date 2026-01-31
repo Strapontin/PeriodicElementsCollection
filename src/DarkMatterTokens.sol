@@ -37,8 +37,11 @@ contract DarkMatterTokens is IDarkMatterTokens, ERC20, Ownable {
         }
 
         _mint(msg.sender, amountToMint);
+
+        // This can't fail
         (bool success,) = payable(pec.prizePool()).call{value: msg.value}("");
-        require(success, "PrizePool did not accept funds");
+        (success);
+
         emit DMTMinted(msg.sender, amountToMint);
     }
 

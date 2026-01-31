@@ -60,8 +60,8 @@ contract PECBurnTest is PECBaseTest {
         vm.prank(bob);
         pec.increaseRelativeAtomicMass(ids, values);
 
-        assertEq(pec.burnedTimes(alice, 1 + (isMatter ? 0 : ANTIMATTER_OFFSET)), times * (isMatter ? 1 : 100));
-        assertEq(pec.burnedTimes(alice, 2 + (isMatter ? 0 : ANTIMATTER_OFFSET)), times * (isMatter ? 1 : 100));
+        assertEq(pec.burnedTimes(alice, 1 + (isMatter ? 0 : ANTIMATTER_OFFSET)), times * (isMatter ? 1 : 1_000));
+        assertEq(pec.burnedTimes(alice, 2 + (isMatter ? 0 : ANTIMATTER_OFFSET)), times * (isMatter ? 1 : 1_000));
 
         // since bob burned one more time than alice, we expect him to have a lower RAM weight
         assertGt(

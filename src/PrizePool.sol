@@ -64,11 +64,11 @@ contract PrizePool is IPrizePool, ERC20, Ownable {
     }
 
     /// @inheritdoc IPrizePool
-    function playerBoughtPacksFromDmt(address player, uint256 dmtBurned) external onlyOwner {
+    function playerBoughtPacksFromDmt(address player, uint256 dmtBurned) external onlyOwner { // TODO Test
         uint256 fee = dmtBurned / 100; // 1% fee
         uint256 shares = dmtBurned - fee;
 
-        _mint(player, shares);
+        _mint(player, shares); 
     }
 
     /// @inheritdoc IPrizePool

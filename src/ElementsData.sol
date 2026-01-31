@@ -48,10 +48,7 @@ abstract contract ElementsData is IElementsData {
                     result[rngIndex] = elementsUnlocked[i];
 
                     // 1/10k chances to be antimatter
-                    if (
-                        levelToMint > ANTIMATTER_OFFSET
-                            || (uint256(keccak256(abi.encode(randomWords[rngIndex])))) % 10_000 == 0
-                    ) {
+                    if ((uint256(keccak256(abi.encode(randomWords[rngIndex])))) % 10_000 == 0) {
                         result[rngIndex] += ANTIMATTER_OFFSET;
                     }
 
@@ -69,7 +66,6 @@ abstract contract ElementsData is IElementsData {
         view
         returns (uint256[] memory elementsWeight, uint256 totalWeight, uint256[] memory elementsUnlocked)
     {
-        if (level > ANTIMATTER_OFFSET) level -= ANTIMATTER_OFFSET;
         elementsUnlocked = elementsUnlockedUnderLevel[level];
 
         elementsWeight = new uint256[](elementsUnlocked.length);
@@ -77,6 +73,26 @@ abstract contract ElementsData is IElementsData {
         for (uint256 i = 0; i < elementsUnlocked.length; i++) {
             elementsWeight[i] = getElementArtificialRamWeight(user, elementsUnlocked[i]);
             totalWeight += elementsWeight[i];
+        }
+    }
+
+    /// @inheritdoc IElementsData
+    function getLightestElementFromUserAtLevel(address user, uint256 level) // TODO Test simply
+        public
+        view
+        returns (uint256 lightestElement)
+    {
+        uint256 lightestWeight = 0;
+
+        uint256 loopLength = elementsAtLevel[level].length;
+        for (uint256 i = 0; i < loopLength; i++) {
+            uint256 elemWeight = getElementArtificialRamWeight(user, elementsAtLevel[level][i]);
+
+            // The artificial RAM weight function above inverses the "weight" to calculate the "Weight RAM"
+            if (elemWeight > lightestWeight) {
+                lightestWeight = elemWeight;
+                lightestElement = elementsAtLevel[level][i];
+            }
         }
     }
 
@@ -105,7 +121,7 @@ abstract contract ElementsData is IElementsData {
     }
 
     /// @inheritdoc IElementsData
-    function getElementsAtLevel(uint256 level) public view returns (uint256[] memory) {
+    function getElementsAtLevel(uint256 level) external view returns (uint256[] memory) {
         return elementsAtLevel[level];
     }
 }

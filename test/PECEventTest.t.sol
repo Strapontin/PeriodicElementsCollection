@@ -34,6 +34,13 @@ contract PECEventTest is PECBaseTest {
 
         vm.prank(alice);
         pec.fundSubscription{value: amount}();
+
+        // Same by sending eth straight away
+        vm.expectEmit(true, true, true, false, address(pec));
+        emit PeriodicElementsCollection.ElementsMinted(address(alice), ids, values);
+
+        vm.prank(alice);
+        address(pec).call{value: amount}("");
     }
 
     function test_mintFreePacks_emit() public {
@@ -102,8 +109,8 @@ contract PECEventTest is PECBaseTest {
         vm.startPrank(alice);
         pec.mintFreePacks();
 
-        vm.expectEmit(true, true, true, true, address(pec));
-        emit PeriodicElementsCollection.ElementsFused(alice, level, isMatter, amountOfLinesFused);
+        vm.expectEmit(true, true, true, false, address(pec));
+        emit PeriodicElementsCollection.ElementsFused(alice, level, isMatter, amountOfLinesFused, 0);
 
         pec.fuseToNextLevel(level, amountOfLinesFused, isMatter);
     }

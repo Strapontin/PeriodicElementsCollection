@@ -25,7 +25,7 @@ contract PeriodicElementsCollection is IPeriodicElementsCollection, ERC1155Suppl
     error PEC__RequestIdAlreadyMinted();
     error PEC__LevelDoesNotExist();
     error PEC__CantFuseLastLevelOfAntimatter();
-    error PEC__CantFuseHigherLevelThanCurrent();
+    error PEC__CantFuseHigherLevelThanCurrent(uint256 currentUserLevel, uint256 levelTryingToFuse);
     error PEC__ZeroValue();
     error PEC__IncorrectParameters();
     error PEC__UnauthorizedTransfer();
@@ -34,7 +34,9 @@ contract PeriodicElementsCollection is IPeriodicElementsCollection, ERC1155Suppl
     event MintRequestInitalized(uint256 indexed requestId, address indexed account, uint256 numPacksPaid);
     event ElementsMinted(address indexed from, uint256[] ids, uint256[] values);
     event ElementsReadyToMint(address indexed user);
-    event ElementsFused(address indexed user, uint256 level, bool isMatter, uint256 amountOfLinesFused);
+    event ElementsFused(
+        address indexed user, uint256 level, bool isMatter, uint256 amountOfLinesFused, uint256 elementMinted
+    );
     event ElementsBurned(address indexed user, uint256[] ids, uint256[] values);
     event AuthorizeTransferChanged(
         address indexed from, address indexed to, uint256 id, uint256 oldValue, uint256 newValue
@@ -207,7 +209,7 @@ contract PeriodicElementsCollection is IPeriodicElementsCollection, ERC1155Suppl
 
         // If the user created a big bang after requesting this element, they get a lvl 1
         if (vrfState.currentUniversesCreated < universesCreated[vrfState.minterAddress]) {
-            vrfState.currentUserLevel = 1;
+            vrfState.currentUserLevel = 1; // TODO Test that
         }
 
         ids = new uint256[](vrfState.randomWords.length);
@@ -254,15 +256,14 @@ contract PeriodicElementsCollection is IPeriodicElementsCollection, ERC1155Suppl
     }
 
     /// @inheritdoc IPeriodicElementsCollection
-    function fuseToNextLevel(uint256 levelToBurn, uint32 lineAmountToBurn, bool isMatter)
-        external
-        returns (uint256 requestId)
-    {
-        // TODO Refactor to mint the lightest element from next level rather than using VRF
-        if (lineAmountToBurn == 0) revert PEC__ZeroValue();
+    function fuseToNextLevel(uint256 levelToBurn, uint32 lineAmountToBurn, bool isMatter) external returns (uint256) {
+        if (lineAmountToBurn == 0) revert PEC__ZeroValue(); // TODO Test
         if (levelToBurn < 1 || levelToBurn > 7) revert PEC__LevelDoesNotExist();
         if (levelToBurn == 7 && !isMatter) revert PEC__CantFuseLastLevelOfAntimatter();
-        if (levelToBurn > usersLevel[msg.sender]) revert PEC__CantFuseHigherLevelThanCurrent();
+        if (usersLevel[msg.sender] == 0) usersLevel[msg.sender] = 1;
+        if (levelToBurn > usersLevel[msg.sender]) {
+            revert PEC__CantFuseHigherLevelThanCurrent(usersLevel[msg.sender], levelToBurn); // TODO Test
+        }
 
         uint256 amountElements = elementsAtLevel[levelToBurn].length;
         uint256 matterOffset = isMatter ? 0 : ANTIMATTER_OFFSET;
@@ -280,13 +281,19 @@ contract PeriodicElementsCollection is IPeriodicElementsCollection, ERC1155Suppl
         // Lvl up if user reaches a new tier
         if (usersLevel[msg.sender] == levelToBurn && levelToBurn < 7) usersLevel[msg.sender]++;
 
+        // Updates antimatter correctly
         uint256 levelToMint = levelToBurn + 1;
-        if (levelToMint == 8) levelToMint = ANTIMATTER_OFFSET + 1;
+        if (levelToMint == 8) {
+            levelToMint = 1;
+            matterOffset = ANTIMATTER_OFFSET;
+        }
 
-        emit ElementsFused(msg.sender, levelToBurn, isMatter, lineAmountToBurn);
+        uint256 elementToMint = getLightestElementFromUserAtLevel(msg.sender, levelToMint) + matterOffset;
+        _mint(msg.sender, elementToMint, lineAmountToBurn, "");
 
-        // Need to request X new random element from the next level
-        // return _generateNewVrfRequest(lineAmountToBurn, levelToMint);
+        emit ElementsFused(msg.sender, levelToBurn, isMatter, lineAmountToBurn, elementToMint);
+
+        return elementToMint;
     }
 
     /* Burn Functions */

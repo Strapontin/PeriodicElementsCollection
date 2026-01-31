@@ -26,6 +26,15 @@ interface IElementsData {
         external
         returns (uint256[] memory elementsWeight, uint256 totalWeight, uint256[] memory elementsUnlocked);
 
+    /// @notice Gets the lightest element from a user at a certain level
+    /// @param user The user to get the element weights from
+    /// @param level The level of the user to check
+    /// @return lightestElement The lightest element from the user at this level
+    function getLightestElementFromUserAtLevel(address user, uint256 level)
+        external
+        view
+        returns (uint256 lightestElement);
+
     /// @notice Gets all elements unlocked by a player
     /// @param user Address of the player
     /// @return Array of element numbers the player has unlocked

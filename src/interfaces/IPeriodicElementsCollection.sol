@@ -47,10 +47,7 @@ interface IPeriodicElementsCollection {
     /// @param levelToBurn Level of elements being burned
     /// @param lineAmountToBurn Number of elements to burn
     /// @param isMatter True for matter, false for antimatter
-    /// @return requestId Chainlink VRF request ID for the fusion result
-    function fuseToNextLevel(uint256 levelToBurn, uint32 lineAmountToBurn, bool isMatter)
-        external
-        returns (uint256 requestId);
+    function fuseToNextLevel(uint256 levelToBurn, uint32 lineAmountToBurn, bool isMatter) external returns (uint256);
 
     /// @notice Increases artificial RAM weight for elements to boost drop rates
     /// @param ids Array of element token IDs
