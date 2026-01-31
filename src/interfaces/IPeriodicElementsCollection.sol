@@ -20,6 +20,7 @@ interface IPeriodicElementsCollection {
         uint256[] randomWords;
         VRFStatus status;
         uint256 levelToMint;
+        uint256 currentBigBangUserLevel;
     }
 
     /// @notice Purchases and requests randomness for a pack of elements

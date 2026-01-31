@@ -80,7 +80,6 @@ contract PeriodicElementsCollection is IPeriodicElementsCollection, ERC1155Suppl
         VRFConsumerBaseV2Plus(_vrfCoordinatorV2Address)
         ElementsData(datas)
         ERC1155("https://gray-acute-wildfowl-4.mypinata.cloud/ipfs/QmcYB1e51yEXG5hosQ2N8RP8zVLTy5wUrc6523Jy21YczT/{id}.json")
-        ERC1155Supply()
     {
         SUBSCRIPTION_ID = _subscriptionId;
         darkMatterTokens = new DarkMatterTokens();
@@ -152,6 +151,7 @@ contract PeriodicElementsCollection is IPeriodicElementsCollection, ERC1155Suppl
         requestIdToVrfState[requestId].minterAddress = msg.sender;
         requestIdToVrfState[requestId].status = VRFStatus.PendingVRFCallback;
         requestIdToVrfState[requestId].levelToMint = levelToMint;
+        requestIdToVrfState[requestId].currentBigBangUserLevel = universesCreated[msg.sender];
     }
 
     /// @inheritdoc IPeriodicElementsCollection
@@ -164,12 +164,12 @@ contract PeriodicElementsCollection is IPeriodicElementsCollection, ERC1155Suppl
         if (usersLevel[user] == 0) usersLevel[user] = 1;
 
         uint256 startOfTheDay = block.timestamp / 1 days * 1 days;
-        numPacksMinted = (startOfTheDay / 1 days) - (lastFreeMintFromUsers[msg.sender] / 1 days);
+        numPacksMinted = (startOfTheDay / 1 days) - (lastFreeMintFromUsers[user] / 1 days);
 
         // If no free packs available and not enough ether send, revert
         if (numPacksMinted == 0) return 0;
 
-        lastFreeMintFromUsers[msg.sender] = startOfTheDay;
+        lastFreeMintFromUsers[user] = startOfTheDay;
 
         // Max days free minting
         if (numPacksMinted > MAX_FREE_PACKS) {
@@ -193,8 +193,7 @@ contract PeriodicElementsCollection is IPeriodicElementsCollection, ERC1155Suppl
         requestIdToVrfState[requestId].randomWords = randomWords;
         requestIdToVrfState[requestId].status = VRFStatus.ReadyToMint;
 
-        address user = requestIdToVrfState[requestId].minterAddress;
-        emit ElementsReadyToMint(user);
+        emit ElementsReadyToMint(requestIdToVrfState[requestId].minterAddress);
     }
 
     /// @inheritdoc IPeriodicElementsCollection
@@ -205,14 +204,18 @@ contract PeriodicElementsCollection is IPeriodicElementsCollection, ERC1155Suppl
         if (vrfState.status != VRFStatus.ReadyToMint) revert PEC__NotInReadyToMintState(vrfState.status);
         requestIdToVrfState[requestId].status = VRFStatus.Minted;
 
+        // If the user called bigbang between requesting VRF and unpacking, set the level to mint to 0
+        if (vrfState.currentBigBangUserLevel < universesCreated[vrfState.minterAddress]) {
+            vrfState.levelToMint = 0;
+        }
+
         ids = new uint256[](vrfState.randomWords.length);
         values = new uint256[](vrfState.randomWords.length);
         uint256 uniqueTokenCount = 0;
 
         // Process each randomWord to determine the tokenId and its quantity
-        uint256[] memory tokenIds = _pickRandomElementAvailable(
-            vrfState.minterAddress, vrfState.randomWords, requestIdToVrfState[requestId].levelToMint
-        );
+        uint256[] memory tokenIds =
+            _pickRandomElementAvailable(vrfState.minterAddress, vrfState.randomWords, vrfState.levelToMint);
 
         for (uint256 tokenIndex = 0; tokenIndex < tokenIds.length; tokenIndex++) {
             // Check if this tokenId already exists in ids array
@@ -254,6 +257,8 @@ contract PeriodicElementsCollection is IPeriodicElementsCollection, ERC1155Suppl
         external
         returns (uint256 requestId)
     {
+        // TODO Add a revert if levelToBurn > usersLevel[msg.sender]
+        // TODO Refactor to mint the lightest element from next level rather than using VRF
         if (lineAmountToBurn == 0) revert PEC__ZeroValue();
         if (levelToBurn < 1 || levelToBurn > 7) revert PEC__LevelDoesNotExist();
         if (levelToBurn == 7 && !isMatter) revert PEC__CantFuseLastLevelOfAntimatter();

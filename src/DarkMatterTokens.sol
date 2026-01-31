@@ -10,7 +10,6 @@ import {PeriodicElementsCollection} from "./PeriodicElementsCollection.sol";
 /// "strapontin" on discord
 /// https://x.com/0xStrapontin on X
 contract DarkMatterTokens is IDarkMatterTokens, ERC20, Ownable {
-    error DMT__DelayNotPassedYet();
     error DMT__NotEnoughEtherSent(uint256 minAmountToSend);
 
     event DMTMinted(address from, uint256 amount);
