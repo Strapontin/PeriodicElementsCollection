@@ -185,7 +185,7 @@ contract PECMintTest is PECBaseTest {
         // Shift to avoid having a modulo of 10k to not mint antimatter
         uint256 matter = 1 << 242;
 
-        (, uint256 totalWeight,) = pec.getRealUserWeightsAtLevel(alice, 0);
+        (, uint256 totalWeight,) = pec.getRealUserWeightsUnderLevel(alice, 1);
         uint256 offset = matter % totalWeight;
 
         uint256[] memory randomWords = new uint256[](5);

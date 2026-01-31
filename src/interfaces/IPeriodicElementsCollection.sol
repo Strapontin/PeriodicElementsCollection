@@ -19,8 +19,8 @@ interface IPeriodicElementsCollection {
         address minterAddress;
         uint256[] randomWords;
         VRFStatus status;
-        uint256 levelToMint;
-        uint256 currentBigBangUserLevel;
+        uint256 currentUserLevel;
+        uint256 currentUniversesCreated;
     }
 
     /// @notice Purchases and requests randomness for a pack of elements

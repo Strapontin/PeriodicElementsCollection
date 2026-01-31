@@ -22,7 +22,7 @@ interface IElementsData {
     /// @return elementsWeight Array of weights for each unlocked element
     /// @return totalWeight Sum of all weights
     /// @return elementsUnlocked Array of element numbers unlocked
-    function getRealUserWeightsAtLevel(address user, uint256 level)
+    function getRealUserWeightsUnderLevel(address user, uint256 level)
         external
         returns (uint256[] memory elementsWeight, uint256 totalWeight, uint256[] memory elementsUnlocked);
 

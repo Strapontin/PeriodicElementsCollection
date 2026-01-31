@@ -35,7 +35,7 @@ abstract contract ElementsData is IElementsData {
     {
         result = new uint256[](randomWords.length);
         (uint256[] memory weights, uint256 totalWeight, uint256[] memory elementsUnlocked) =
-            getRealUserWeightsAtLevel(user, levelToMint);
+            getRealUserWeightsUnderLevel(user, levelToMint);
 
         for (uint256 rngIndex = 0; rngIndex < randomWords.length; rngIndex++) {
             uint256 random = randomWords[rngIndex] % totalWeight;
@@ -64,24 +64,17 @@ abstract contract ElementsData is IElementsData {
     /* Public View Functions */
 
     /// @inheritdoc IElementsData
-    function getRealUserWeightsAtLevel(address user, uint256 level)
+    function getRealUserWeightsUnderLevel(address user, uint256 level)
         public
         view
         returns (uint256[] memory elementsWeight, uint256 totalWeight, uint256[] memory elementsUnlocked)
     {
-        if (level == 0) {
-            elementsUnlocked = getElementsUnlockedByPlayer(user);
-        } else {
-            // If the level is provided, we are going to mint random elements of this level
-            if (level > ANTIMATTER_OFFSET) level -= ANTIMATTER_OFFSET;
-            elementsUnlocked = getElementsAtLevel(level);
-        }
+        if (level > ANTIMATTER_OFFSET) level -= ANTIMATTER_OFFSET;
+        elementsUnlocked = elementsUnlockedUnderLevel[level];
 
-        uint256 availableElementsLength = elementsUnlocked.length;
+        elementsWeight = new uint256[](elementsUnlocked.length);
 
-        elementsWeight = new uint256[](availableElementsLength);
-
-        for (uint256 i = 0; i < availableElementsLength; i++) {
+        for (uint256 i = 0; i < elementsUnlocked.length; i++) {
             elementsWeight[i] = getElementArtificialRamWeight(user, elementsUnlocked[i]);
             totalWeight += elementsWeight[i];
         }
@@ -94,7 +87,7 @@ abstract contract ElementsData is IElementsData {
     }
 
     /// @inheritdoc IElementsData
-    function getElementsUnlockedUnderLevel(uint256 level) public view returns (uint256[] memory) {
+    function getElementsUnlockedUnderLevel(uint256 level) external view returns (uint256[] memory) {
         return elementsUnlockedUnderLevel[level];
     }
 

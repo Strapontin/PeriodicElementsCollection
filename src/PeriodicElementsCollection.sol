@@ -25,6 +25,7 @@ contract PeriodicElementsCollection is IPeriodicElementsCollection, ERC1155Suppl
     error PEC__RequestIdAlreadyMinted();
     error PEC__LevelDoesNotExist();
     error PEC__CantFuseLastLevelOfAntimatter();
+    error PEC__CantFuseHigherLevelThanCurrent();
     error PEC__ZeroValue();
     error PEC__IncorrectParameters();
     error PEC__UnauthorizedTransfer();
@@ -105,7 +106,7 @@ contract PeriodicElementsCollection is IPeriodicElementsCollection, ERC1155Suppl
         uint32 numWordsToRequest = uint32(numPacksPaid * ELEMENTS_IN_PACK);
 
         // 0 means we mint an element available to the user
-        requestId = _generateNewVrfRequest(numWordsToRequest, 0);
+        requestId = _generateNewVrfRequest(numWordsToRequest);
 
         uint256 leftOverEth = msg.value - (numPacksPaid * PACK_PRICE);
         prizePool.playerBoughtPacks{value: msg.value - leftOverEth}(msg.sender);
@@ -130,13 +131,13 @@ contract PeriodicElementsCollection is IPeriodicElementsCollection, ERC1155Suppl
         uint32 numWordsToRequest = uint32(amountPacksToMint * ELEMENTS_IN_PACK);
 
         // 0 means we mint an element available to the user
-        requestId = _generateNewVrfRequest(numWordsToRequest, 0);
+        requestId = _generateNewVrfRequest(numWordsToRequest);
 
         emit MintRequestInitalized(requestId, msg.sender, amountPacksToMint);
     }
 
     // levelToMint = 0 => all available elements
-    function _generateNewVrfRequest(uint32 numWordsToRequest, uint256 levelToMint) private returns (uint256 requestId) {
+    function _generateNewVrfRequest(uint32 numWordsToRequest) private returns (uint256 requestId) {
         requestId = s_vrfCoordinator.requestRandomWords(
             VRFV2PlusClient.RandomWordsRequest({
                 keyHash: KEY_HASH,
@@ -150,8 +151,8 @@ contract PeriodicElementsCollection is IPeriodicElementsCollection, ERC1155Suppl
 
         requestIdToVrfState[requestId].minterAddress = msg.sender;
         requestIdToVrfState[requestId].status = VRFStatus.PendingVRFCallback;
-        requestIdToVrfState[requestId].levelToMint = levelToMint;
-        requestIdToVrfState[requestId].currentBigBangUserLevel = universesCreated[msg.sender];
+        requestIdToVrfState[requestId].currentUserLevel = usersLevel[msg.sender];
+        requestIdToVrfState[requestId].currentUniversesCreated = universesCreated[msg.sender];
     }
 
     /// @inheritdoc IPeriodicElementsCollection
@@ -204,9 +205,9 @@ contract PeriodicElementsCollection is IPeriodicElementsCollection, ERC1155Suppl
         if (vrfState.status != VRFStatus.ReadyToMint) revert PEC__NotInReadyToMintState(vrfState.status);
         requestIdToVrfState[requestId].status = VRFStatus.Minted;
 
-        // If the user called bigbang between requesting VRF and unpacking, set the level to mint to 0
-        if (vrfState.currentBigBangUserLevel < universesCreated[vrfState.minterAddress]) {
-            vrfState.levelToMint = 0;
+        // If the user created a big bang after requesting this element, they get a lvl 1
+        if (vrfState.currentUniversesCreated < universesCreated[vrfState.minterAddress]) {
+            vrfState.currentUserLevel = 1;
         }
 
         ids = new uint256[](vrfState.randomWords.length);
@@ -215,7 +216,7 @@ contract PeriodicElementsCollection is IPeriodicElementsCollection, ERC1155Suppl
 
         // Process each randomWord to determine the tokenId and its quantity
         uint256[] memory tokenIds =
-            _pickRandomElementAvailable(vrfState.minterAddress, vrfState.randomWords, vrfState.levelToMint);
+            _pickRandomElementAvailable(vrfState.minterAddress, vrfState.randomWords, vrfState.currentUserLevel);
 
         for (uint256 tokenIndex = 0; tokenIndex < tokenIds.length; tokenIndex++) {
             // Check if this tokenId already exists in ids array
@@ -257,11 +258,11 @@ contract PeriodicElementsCollection is IPeriodicElementsCollection, ERC1155Suppl
         external
         returns (uint256 requestId)
     {
-        // TODO Add a revert if levelToBurn > usersLevel[msg.sender]
         // TODO Refactor to mint the lightest element from next level rather than using VRF
         if (lineAmountToBurn == 0) revert PEC__ZeroValue();
         if (levelToBurn < 1 || levelToBurn > 7) revert PEC__LevelDoesNotExist();
         if (levelToBurn == 7 && !isMatter) revert PEC__CantFuseLastLevelOfAntimatter();
+        if (levelToBurn > usersLevel[msg.sender]) revert PEC__CantFuseHigherLevelThanCurrent();
 
         uint256 amountElements = elementsAtLevel[levelToBurn].length;
         uint256 matterOffset = isMatter ? 0 : ANTIMATTER_OFFSET;
@@ -285,7 +286,7 @@ contract PeriodicElementsCollection is IPeriodicElementsCollection, ERC1155Suppl
         emit ElementsFused(msg.sender, levelToBurn, isMatter, lineAmountToBurn);
 
         // Need to request X new random element from the next level
-        return _generateNewVrfRequest(lineAmountToBurn, levelToMint);
+        // return _generateNewVrfRequest(lineAmountToBurn, levelToMint);
     }
 
     /* Burn Functions */
