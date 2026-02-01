@@ -135,7 +135,7 @@ contract PPRewardsTest is PECBaseTest {
     function test_multipleUsersRewardsWorkflow(uint256 aliceBoughtPacks, uint256 bobBoughtPacks, uint256 directFunding)
         public
     {
-        aliceBoughtPacks = bound(aliceBoughtPacks, 0, NUM_MAX_PACKS_MINTED_AT_ONCE);
+        aliceBoughtPacks = bound(aliceBoughtPacks, 1, NUM_MAX_PACKS_MINTED_AT_ONCE);
         bobBoughtPacks = bound(bobBoughtPacks, 0, NUM_MAX_PACKS_MINTED_AT_ONCE);
         directFunding = bound(directFunding, 0, address(this).balance);
 

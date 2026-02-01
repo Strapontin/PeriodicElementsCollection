@@ -134,6 +134,7 @@ contract PeriodicElementsCollection is IPeriodicElementsCollection, ERC1155Suppl
 
         // 0 means we mint an element available to the user
         requestId = _generateNewVrfRequest(numWordsToRequest);
+        prizePool.playerBoughtPacksFromDmt(msg.sender, amountPacksToMint * PACK_PRICE);
 
         emit MintRequestInitalized(requestId, msg.sender, amountPacksToMint);
     }
@@ -209,7 +210,7 @@ contract PeriodicElementsCollection is IPeriodicElementsCollection, ERC1155Suppl
 
         // If the user created a big bang after requesting this element, they get a lvl 1
         if (vrfState.currentUniversesCreated < universesCreated[vrfState.minterAddress]) {
-            vrfState.currentUserLevel = 1; // TODO Test that
+            vrfState.currentUserLevel = 1;
         }
 
         ids = new uint256[](vrfState.randomWords.length);
