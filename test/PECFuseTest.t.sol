@@ -109,7 +109,7 @@ contract PECFuseTest is PECBaseTest {
         assertEq(elementMinted, ANTIMATTER_OFFSET + 3);
     }
 
-    function test_fuseRevertsIfLevelToFuseIsHigherThanUserLevel(bool random) public {
+    function test_fuseRevertsIfLevelToFuseIsHigherThanUserLevel(bool antimatter) public {
         pec.mintAll(alice, 1);
         pec.setUserLevel(alice, 0);
 
@@ -140,7 +140,15 @@ contract PECFuseTest is PECBaseTest {
         }
 
         // But it works for level 1 matter and antimatter
-        pec.fuseToNextLevel(1, 1, random);
+        pec.fuseToNextLevel(1, 1, antimatter);
         assertEq(pec.usersLevel(alice), 2);
+    }
+
+    function test_cantFuse0Lines(uint256 level, bool antimatter) public {
+        pec.mintAll(alice, 1);
+        pec.setUserLevel(alice, 0);
+
+        vm.expectRevert(PeriodicElementsCollection.PEC__ZeroValue.selector);
+        pec.fuseToNextLevel(level, 0, antimatter);
     }
 }

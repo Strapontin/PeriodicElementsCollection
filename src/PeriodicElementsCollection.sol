@@ -257,7 +257,7 @@ contract PeriodicElementsCollection is IPeriodicElementsCollection, ERC1155Suppl
 
     /// @inheritdoc IPeriodicElementsCollection
     function fuseToNextLevel(uint256 levelToBurn, uint32 lineAmountToBurn, bool isMatter) external returns (uint256) {
-        if (lineAmountToBurn == 0) revert PEC__ZeroValue(); // TODO Test
+        if (lineAmountToBurn == 0) revert PEC__ZeroValue();
         if (levelToBurn < 1 || levelToBurn > 7) revert PEC__LevelDoesNotExist();
         if (levelToBurn == 7 && !isMatter) revert PEC__CantFuseLastLevelOfAntimatter();
 
