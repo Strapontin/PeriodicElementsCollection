@@ -77,7 +77,7 @@ abstract contract ElementsData is IElementsData {
     }
 
     /// @inheritdoc IElementsData
-    function getLightestElementFromUserAtLevel(address user, uint256 level) // TODO Test simply
+    function getLightestElementFromUserAtLevel(address user, uint256 level)
         public
         view
         returns (uint256 lightestElement)
@@ -117,7 +117,7 @@ abstract contract ElementsData is IElementsData {
         uint256 numBurnedTimes = burnedTimes[user][elementNumber];
 
         // elementBaseRam is set in deployer
-        artificialRam = 1e18 / (elementBaseRam + (numBurnedTimes * 100));
+        artificialRam = 1e36 / (elementBaseRam + (numBurnedTimes * 100));
     }
 
     /// @inheritdoc IElementsData

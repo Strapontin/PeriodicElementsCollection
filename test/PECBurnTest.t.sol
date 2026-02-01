@@ -31,7 +31,6 @@ contract PECBurnTest is PECBaseTest {
 
     function test_burningMultipleTimesIncreaseMassMultipleTimes(uint256 times, bool isMatter) public {
         times = bound(times, 1, 100_000);
-        vm.assume(times > 1 && times < 100_000);
 
         // Mint enough elements for the alice
         uint256[] memory mintIds = new uint256[](2);
@@ -60,18 +59,12 @@ contract PECBurnTest is PECBaseTest {
         vm.prank(bob);
         pec.increaseRelativeAtomicMass(ids, values);
 
-        assertEq(pec.burnedTimes(alice, 1 + (isMatter ? 0 : ANTIMATTER_OFFSET)), times * (isMatter ? 1 : 1_000));
-        assertEq(pec.burnedTimes(alice, 2 + (isMatter ? 0 : ANTIMATTER_OFFSET)), times * (isMatter ? 1 : 1_000));
+        assertEq(pec.burnedTimes(alice, 1), times * (isMatter ? 1 : 1_000));
+        assertEq(pec.burnedTimes(alice, 2), times * (isMatter ? 1 : 1_000));
 
         // since bob burned one more time than alice, we expect him to have a lower RAM weight
-        assertGt(
-            pec.getElementArtificialRamWeight(alice, 1 + (isMatter ? 0 : ANTIMATTER_OFFSET)),
-            pec.getElementArtificialRamWeight(bob, 1 + (isMatter ? 0 : ANTIMATTER_OFFSET))
-        );
-        assertGt(
-            pec.getElementArtificialRamWeight(alice, 2 + (isMatter ? 0 : ANTIMATTER_OFFSET)),
-            pec.getElementArtificialRamWeight(bob, 2 + (isMatter ? 0 : ANTIMATTER_OFFSET))
-        );
+        assertGt(pec.getElementArtificialRamWeight(alice, 1), pec.getElementArtificialRamWeight(bob, 1));
+        assertGt(pec.getElementArtificialRamWeight(alice, 2), pec.getElementArtificialRamWeight(bob, 2));
     }
 
     function test_cantIncreaseRelativeAtomicMassWithIncorrectParameters() public {
@@ -116,5 +109,56 @@ contract PECBurnTest is PECBaseTest {
 
         // After the 30th burn, Hydrogen's RAM is higher than Helium's
         assertGt(pec.getElementArtificialRamWeight(alice, 2), pec.getElementArtificialRamWeight(alice, 1));
+    }
+
+    function test_lightestElementIsExpected() public {
+        assertEq(pec.getLightestElementFromUserAtLevel(alice, 1), 1);
+        assertEq(pec.getLightestElementFromUserAtLevel(alice, 2), 3);
+        assertEq(pec.getLightestElementFromUserAtLevel(alice, 3), 11);
+        assertEq(pec.getLightestElementFromUserAtLevel(alice, 4), 19);
+        assertEq(pec.getLightestElementFromUserAtLevel(alice, 5), 37);
+        assertEq(pec.getLightestElementFromUserAtLevel(alice, 6), 55);
+        assertEq(pec.getLightestElementFromUserAtLevel(alice, 7), 87);
+    }
+
+    function test_lightestElementChangesAfterExpectedBurn() public {
+        pec.mintAll(alice, 999);
+        vm.startPrank(alice);
+
+        assertLightestBurn(1, 1, 1, 29);
+        assertLightestBurn(2, 3, 3, 20);
+        assertLightestBurn(3, 11, 11, 13);
+        assertLightestBurn(4, 19, 19, 9);
+        assertLightestBurn(5, 37, 37, 21);
+        assertLightestBurn(6, 55, 55, 44);
+        assertLightestBurn(7, 87, 87, 30);
+    }
+
+    function assertLightestBurn(uint256 level, uint256 lightestElement, uint256 elementToBurn, uint256 amtBurnNecessary)
+        private
+    {
+        burnAtLevel(elementToBurn, amtBurnNecessary);
+        assertEq(pec.getLightestElementFromUserAtLevel(alice, level), lightestElement);
+        burnAtLevel(elementToBurn, 1);
+        assertEq(pec.getLightestElementFromUserAtLevel(alice, level), lightestElement + 1);
+    }
+
+    function burnAtLevel(uint256 id, uint256 amount) private {
+        uint256[] memory ids = new uint256[](1);
+        uint256[] memory values = new uint256[](1);
+        ids[0] = id;
+        values[0] = amount;
+
+        pec.increaseRelativeAtomicMass(ids, values);
+    }
+
+    function test_lightestElementChanges100xAfterAntimatterBurn() public {
+        pec.mintAll(alice, 99999);
+        vm.startPrank(alice);
+
+        // Burning one element of antimatter should be equivalent to burning 1000 elements of matter
+        assertLightestBurn(1, 1, 1, 29);
+        burnAtLevel(2 + ANTIMATTER_OFFSET, 1);
+        assertLightestBurn(1, 1, 1, 999);
     }
 }

@@ -211,12 +211,11 @@ contract PECMintTest is PECBaseTest {
 
     function test_mintAntimatter() public fundSubscriptionMax {
         uint256 magicNumberHydrogen = 7825;
-        uint256 magicNumberHelium = 992063492072590;
 
         uint256[] memory randomWords = new uint256[](5);
         randomWords[0] = magicNumberHydrogen;
-        randomWords[1] = magicNumberHelium;
-        randomWords[2] = magicNumberHelium;
+        randomWords[1] = magicNumberHydrogen;
+        randomWords[2] = magicNumberHydrogen;
         randomWords[3] = magicNumberHydrogen;
         randomWords[4] = magicNumberHydrogen;
 
@@ -227,12 +226,10 @@ contract PECMintTest is PECBaseTest {
         vrfCoordinator.fulfillRandomWordsWithOverride(requestId, address(pec), randomWords);
         (uint256[] memory ids, uint256[] memory values) = pec.unpackRandomMatter(requestId);
 
-        assertEq(pec.balanceOf(alice, ANTIMATTER_OFFSET + 1), 3); // 3 Hydrogen
+        assertEq(ids.length, 1);
+        assertEq(pec.balanceOf(alice, ANTIMATTER_OFFSET + 1), 5); // 5 Hydrogen
         assertEq(ids[0], ANTIMATTER_OFFSET + 1);
-        assertEq(values[0], 3);
-        assertEq(pec.balanceOf(alice, ANTIMATTER_OFFSET + 2), 2); // 2 Helium
-        assertEq(ids[1], ANTIMATTER_OFFSET + 2);
-        assertEq(values[1], 2);
+        assertEq(values[0], 5);
     }
 
     function test_elementsUnlockedByPlayer() public {

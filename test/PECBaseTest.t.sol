@@ -96,7 +96,7 @@ contract BasicTests is PECBaseTest {
         assertEq(1.008 * 1_000, ram);
         assertEq(1, level);
 
-        uint256 expectedRam = 1e18 / ram;
+        uint256 expectedRam = 1e36 / ram;
         assertEq(expectedRam, pec.getElementArtificialRamWeight(alice, 1));
     }
 

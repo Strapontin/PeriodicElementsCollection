@@ -314,7 +314,7 @@ contract PeriodicElementsCollection is IPeriodicElementsCollection, ERC1155Suppl
         for (uint256 i = 0; i < ids.length; i++) {
             if (ids[i] > ANTIMATTER_OFFSET) {
                 // Burning an antimatter increase RAM by 100 (using 1_000 here because it multiplies by 0.1 in `getElementArtificialRamWeight`)
-                burnedTimes[msg.sender][ids[i]] += values[i] * 1_000 * userUniversesCreated;
+                burnedTimes[msg.sender][ids[i] - ANTIMATTER_OFFSET] += values[i] * 1_000 * userUniversesCreated;
             } else {
                 burnedTimes[msg.sender][ids[i]] += values[i] * userUniversesCreated;
             }
