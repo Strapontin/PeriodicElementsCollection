@@ -111,7 +111,7 @@ contract PECBurnTest is PECBaseTest {
         assertGt(pec.getElementArtificialRamWeight(alice, 2), pec.getElementArtificialRamWeight(alice, 1));
     }
 
-    function test_lightestElementIsExpected() public {
+    function test_lightestElementIsExpected() public view {
         assertEq(pec.getLightestElementFromUserAtLevel(alice, 1), 1);
         assertEq(pec.getLightestElementFromUserAtLevel(alice, 2), 3);
         assertEq(pec.getLightestElementFromUserAtLevel(alice, 3), 11);

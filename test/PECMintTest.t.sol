@@ -182,7 +182,7 @@ contract PECMintTest is PECBaseTest {
     }
 
     function test_mintMatter() public fundSubscriptionMax {
-        // Shift to avoid having a modulo of 10k to not mint antimatter
+        // Shift to avoid having a modulo of 10k to not mint antimatter (the logic changed but I'm not changing this function yet)
         uint256 matter = 1 << 242;
 
         (, uint256 totalWeight,) = pec.getRealUserWeightsUnderLevel(alice, 1);
@@ -362,5 +362,32 @@ contract PECMintTest is PECBaseTest {
         packsMinted = _bound(packsMinted, 1, NUM_MAX_PACKS_MINTED_AT_ONCE);
 
         pec.mintPack{value: PACK_PRICE * packsMinted}();
+    }
+
+    // User who try to buy pack then unpack it after big bang will result in minting a level 1 element
+    function test_unpackingAfterBigBangResultInLvl1(uint256 random) public fundSubscriptionMax {
+        pec.mintAll(alice, 1);
+
+        uint256[] memory randomWords = new uint256[](5);
+        randomWords[0] = random;
+        randomWords[1] = random;
+        randomWords[2] = random;
+        randomWords[3] = random;
+        randomWords[4] = random;
+
+        vm.prank(alice);
+        uint256 requestId = pec.mintPack{value: PACK_PRICE}();
+
+        pec.bigBang(alice);
+
+        vrfCoordinator.fulfillRandomWordsWithOverride(requestId, address(pec), randomWords);
+        (uint256[] memory ids,) = pec.unpackRandomMatter(requestId);
+
+        for (uint256 i = 0; i < ids.length; i++) {
+            bool isExpected =
+                ids[i] == 1 || ids[i] == 2 || ids[i] == 1 + ANTIMATTER_OFFSET || ids[i] == 2 + ANTIMATTER_OFFSET;
+
+            assert(isExpected);
+        }
     }
 }
