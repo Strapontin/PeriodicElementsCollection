@@ -260,9 +260,11 @@ contract PeriodicElementsCollection is IPeriodicElementsCollection, ERC1155Suppl
         if (lineAmountToBurn == 0) revert PEC__ZeroValue(); // TODO Test
         if (levelToBurn < 1 || levelToBurn > 7) revert PEC__LevelDoesNotExist();
         if (levelToBurn == 7 && !isMatter) revert PEC__CantFuseLastLevelOfAntimatter();
+
+        // A non player becomes a player if they are given elements and want to fuse them
         if (usersLevel[msg.sender] == 0) usersLevel[msg.sender] = 1;
         if (levelToBurn > usersLevel[msg.sender]) {
-            revert PEC__CantFuseHigherLevelThanCurrent(usersLevel[msg.sender], levelToBurn); // TODO Test
+            revert PEC__CantFuseHigherLevelThanCurrent(usersLevel[msg.sender], levelToBurn);
         }
 
         uint256 amountElements = elementsAtLevel[levelToBurn].length;

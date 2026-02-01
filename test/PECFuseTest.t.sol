@@ -108,4 +108,39 @@ contract PECFuseTest is PECBaseTest {
         elementMinted = pec.fuseToNextLevel(1, 1, false);
         assertEq(elementMinted, ANTIMATTER_OFFSET + 3);
     }
+
+    function test_fuseRevertsIfLevelToFuseIsHigherThanUserLevel(bool random) public {
+        pec.mintAll(alice, 1);
+        pec.setUserLevel(alice, 0);
+
+        assertEq(pec.usersLevel(alice), 0);
+
+        // Here, we can assume that Alice was given all the elements.
+        // She is lvl 0 so not yet a player, and shouldn't be able to fuse any matter/antimatter > level 1
+        vm.startPrank(alice);
+
+        for (uint256 level = 2; level <= 7; level++) {
+            // Matter
+            vm.expectRevert(
+                abi.encodeWithSelector(
+                    PeriodicElementsCollection.PEC__CantFuseHigherLevelThanCurrent.selector, 1, level
+                )
+            );
+            pec.fuseToNextLevel(level, 1, true);
+
+            // Antimatter
+            if (level != 7) {
+                vm.expectRevert(
+                    abi.encodeWithSelector(
+                        PeriodicElementsCollection.PEC__CantFuseHigherLevelThanCurrent.selector, 1, level
+                    )
+                );
+                pec.fuseToNextLevel(level, 1, false);
+            }
+        }
+
+        // But it works for level 1 matter and antimatter
+        pec.fuseToNextLevel(1, 1, random);
+        assertEq(pec.usersLevel(alice), 2);
+    }
 }

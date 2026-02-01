@@ -40,7 +40,8 @@ contract PECEventTest is PECBaseTest {
         emit PeriodicElementsCollection.ElementsMinted(address(alice), ids, values);
 
         vm.prank(alice);
-        address(pec).call{value: amount}("");
+        (bool success,) = address(pec).call{value: amount}("");
+        require(success);
     }
 
     function test_mintFreePacks_emit() public {
