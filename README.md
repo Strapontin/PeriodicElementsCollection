@@ -10,8 +10,6 @@ This is implemented using ERC1155.
 
 Randomness is implemented using Chainlink VRF.
 
-Since I probably won’t have the funds to audit this, I will probably deploy this game on testnet. The contract is upgradeable in order to fix eventual issues. 
-
 # Features
 
 ## Minting
